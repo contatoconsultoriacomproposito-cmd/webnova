@@ -339,7 +339,7 @@ const ContactForm = () => {
 };
 
 // Payment Modal Component
-const PaymentModal = ({ plan, isOpen, onClose }: { plan: any, isOpen: boolean, onClose: () => void }) => {
+const PaymentModal = ({ plan, isOpen, onClose, currentUser }: { plan: any, isOpen: boolean, onClose: () => void, currentUser: User | null }) => {
   const [loading, setLoading] = useState(false);
   const [userEmail, setUserEmail] = useState('');
   
@@ -352,8 +352,13 @@ const PaymentModal = ({ plan, isOpen, onClose }: { plan: any, isOpen: boolean, o
     if (isOpen) {
         setIncludeHosting(false);
         setIncludeSupport(false);
+        if (currentUser) {
+            setUserEmail(currentUser.email);
+        } else {
+            setUserEmail('');
+        }
     }
-  }, [isOpen]);
+  }, [isOpen, currentUser]);
 
   if (!isOpen || !plan) return null;
 
@@ -364,10 +369,15 @@ const PaymentModal = ({ plan, isOpen, onClose }: { plan: any, isOpen: boolean, o
   const total = plan.price + (includeHosting ? UPSALE_PRICE : 0) + (includeSupport ? supportPrice : 0);
 
   const handlePayment = async () => {
+    if (!userEmail || !userEmail.includes('@')) {
+        alert("Por favor, digite um e-mail válido para receber os detalhes da compra.");
+        return;
+    }
+
     setLoading(true);
     
-    // Fallback de email se o usuário não digitar
-    const emailToUse = userEmail.trim() !== '' ? userEmail : 'cliente@teste.com';
+    // Usa o email digitado (se não estiver logado) ou o do usuário (se estiver)
+    const emailToUse = userEmail.trim();
 
     try {
         const response = await fetch('/api/checkout', {
@@ -461,13 +471,22 @@ const PaymentModal = ({ plan, isOpen, onClose }: { plan: any, isOpen: boolean, o
           </div>
 
           <div className="space-y-4">
-              <input 
-                 type="email" 
-                 placeholder="Digite seu e-mail para cobrança"
-                 className="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-3 text-white text-sm focus:ring-2 focus:ring-brand-500 outline-none"
-                 value={userEmail}
-                 onChange={(e) => setUserEmail(e.target.value)}
-              />
+              {/* Se não estiver logado, mostra input de email. Se estiver, mostra email readonly ou editável */}
+              <div>
+                  <label className="block text-sm font-medium text-slate-400 mb-1">
+                      E-mail para envio do acesso: <span className="text-red-500">*</span>
+                  </label>
+                  <input 
+                     type="email" 
+                     placeholder="seu@email.com"
+                     className="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-3 text-white text-sm focus:ring-2 focus:ring-brand-500 outline-none disabled:opacity-60 disabled:cursor-not-allowed"
+                     value={userEmail}
+                     onChange={(e) => setUserEmail(e.target.value)}
+                     disabled={!!currentUser} // Desabilita se já estiver logado para evitar erros
+                  />
+                  {currentUser && <p className="text-xs text-slate-500 mt-1">Logado como {currentUser.name}</p>}
+              </div>
+
               <button 
                 onClick={handlePayment}
                 disabled={loading}
@@ -481,6 +500,8 @@ const PaymentModal = ({ plan, isOpen, onClose }: { plan: any, isOpen: boolean, o
     </div>
   );
 };
+
+// --- MAIN LANDING PAGE ---
 
 const LandingPage = ({ onPlanSelect, onLoginClick }: { onPlanSelect: (plan: any) => void, onLoginClick: () => void }) => {
   
@@ -974,68 +995,6 @@ const DashboardHome = ({ user }: { user: User }) => {
          </div>
       </div>
 
-      {/* Services and Subscriptions Section */}
-      <h2 className="text-xl font-bold text-white mt-8 mb-4">Meus Serviços e Assinaturas</h2>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-         {/* Hosting Card */}
-         <div className="bg-slate-900 p-6 rounded-2xl shadow-lg border border-slate-800 hover:border-slate-700 transition-colors flex flex-col">
-            <div className="flex justify-between items-start mb-4">
-               <div className="p-2 bg-amber-500/10 rounded-lg text-amber-500">
-                  <Server size={24} />
-               </div>
-               <span className="px-3 py-1 bg-green-500/10 text-green-400 border border-green-500/20 rounded-full text-xs font-bold">Ativo</span>
-            </div>
-            <h3 className="text-lg font-bold text-white mb-1">Domínio & Hospedagem</h3>
-            <p className="text-sm text-slate-400 mb-6">Renovação Anual</p>
-            
-            <div className="mt-auto">
-                <p className="text-xs text-slate-500 mb-3">Opções de Renovação:</p>
-                <div className="grid grid-cols-3 gap-2">
-                    {HOSTING_RENEWAL_OPTIONS.map(opt => (
-                        <button key={opt.years} className="px-2 py-2 bg-slate-800 hover:bg-brand-600 hover:text-white rounded-lg text-xs font-bold text-slate-300 transition-colors border border-slate-700">
-                            {opt.label}
-                        </button>
-                    ))}
-                </div>
-            </div>
-         </div>
-
-         {/* Support Card */}
-         <div className="bg-slate-900 p-6 rounded-2xl shadow-lg border border-slate-800 hover:border-slate-700 transition-colors flex flex-col">
-            <div className="flex justify-between items-start mb-4">
-               <div className="p-2 bg-purple-500/10 rounded-lg text-purple-500">
-                  <LifeBuoy size={24} />
-               </div>
-               <span className="px-3 py-1 bg-green-500/10 text-green-400 border border-green-500/20 rounded-full text-xs font-bold">Ativo</span>
-            </div>
-            <h3 className="text-lg font-bold text-white mb-1">Suporte VIP Ilimitado</h3>
-            <p className="text-sm text-slate-400 mb-6">Prioridade Máxima</p>
-            
-            <div className="mt-auto">
-                <button className="w-full py-3 bg-purple-600 hover:bg-purple-500 text-white rounded-xl font-bold text-sm transition-colors shadow-lg shadow-purple-900/20">
-                    Abrir Chamado Prioritário
-                </button>
-            </div>
-         </div>
-
-         {/* Billing Card */}
-         <div className="bg-slate-900 p-6 rounded-2xl shadow-lg border border-slate-800 hover:border-slate-700 transition-colors flex flex-col">
-            <div className="flex justify-between items-start mb-4">
-               <div className="p-2 bg-brand-500/10 rounded-lg text-brand-500">
-                  <CreditCard size={24} />
-               </div>
-            </div>
-            <h3 className="text-lg font-bold text-white mb-1">Faturas e Cobrança</h3>
-            <p className="text-sm text-slate-400 mb-6">Histórico de Pagamentos</p>
-            
-            <div className="mt-auto">
-                <button className="w-full py-3 bg-slate-800 hover:bg-slate-700 text-white border border-slate-700 rounded-xl font-bold text-sm transition-colors">
-                    Ver Histórico Completo
-                </button>
-            </div>
-         </div>
-      </div>
-
       {/* Feature Specific Panels */}
       {user.plan === PlanType.BLOG && (
         <div className="bg-slate-900 rounded-2xl shadow-lg border border-slate-800 p-8">
@@ -1208,6 +1167,7 @@ export default function Home() {
         plan={selectedPlan} 
         isOpen={isPaymentModalOpen} 
         onClose={() => setIsPaymentModalOpen(false)} 
+        currentUser={currentUser} // Pass current user to pre-fill email
       />
     </>
   );
