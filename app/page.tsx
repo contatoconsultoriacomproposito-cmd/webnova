@@ -369,17 +369,27 @@ const PaymentModal = ({ plan, isOpen, onClose, currentUser }: { plan: any, isOpe
   const total = plan.price + (includeHosting ? UPSALE_PRICE : 0) + (includeSupport ? supportPrice : 0);
 
   const handlePayment = async () => {
+    // Validação rigorosa do email
     if (!userEmail || !userEmail.includes('@')) {
-        alert("Por favor, digite um e-mail válido para receber os detalhes da compra.");
+        alert("Por favor, digite um e-mail válido para prosseguir com a compra.");
         return;
     }
 
     setLoading(true);
-    
-    // Usa o email digitado (se não estiver logado) ou o do usuário (se estiver)
     const emailToUse = userEmail.trim();
 
     try {
+        // --- PASSO EXTRA DE SEGURANÇA E CADASTRO ---
+        // Se o usuário NÃO estiver logado, vamos tentar criar a conta dele (ou enviar magic link)
+        // antes de processar o pagamento. Isso garante que o email exista no Supabase.
+        if (!currentUser) {
+            console.log("Usuário não logado. Registrando/Enviando Magic Link para:", emailToUse);
+            // Dispara o Magic Link (Silent Signup)
+            // Não bloqueamos se der erro (ex: rate limit), mas tentamos garantir o registro.
+            await loginWithEmail(emailToUse);
+        }
+
+        // --- PROCESSO DE CHECKOUT ---
         const response = await fetch('/api/checkout', {
             method: 'POST',
             headers: {
@@ -496,6 +506,282 @@ const PaymentModal = ({ plan, isOpen, onClose, currentUser }: { plan: any, isOpe
               </button>
           </div>
         </div>
+      </div>
+    </div>
+  );
+};
+
+// --- AUTH COMPONENTS ---
+
+const LoginModal = ({ isOpen, onClose, onLogin }: any) => {
+  const [email, setEmail] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [sent, setSent] = useState(false);
+
+  if (!isOpen) return null;
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    
+    // Using Real Supabase Auth (Magic Link)
+    const { error } = await loginWithEmail(email);
+
+    if (error) {
+      alert("Erro ao enviar login: " + error.message);
+      setLoading(false);
+    } else {
+      setSent(true);
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/80 backdrop-blur-md" onClick={onClose}></div>
+      <div className="bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl w-full max-w-md p-8 relative z-10">
+        
+        {sent ? (
+          <div className="text-center">
+            <div className="w-16 h-16 bg-green-500/10 rounded-full flex items-center justify-center text-green-500 mx-auto mb-4">
+               <Mail size={32} />
+            </div>
+            <h2 className="text-2xl font-bold mb-2 text-white">Verifique seu Email</h2>
+            <p className="text-slate-400 mb-6">Enviamos um link mágico de acesso para <strong>{email}</strong>.</p>
+            <button onClick={onClose} className="text-brand-400 font-bold hover:text-brand-300">Fechar</button>
+          </div>
+        ) : (
+          <>
+            <h2 className="text-2xl font-bold mb-6 text-white">Acesse sua Conta</h2>
+            <form onSubmit={handleSubmit} className="space-y-5">
+              <div>
+                <label className="block text-sm font-medium text-slate-400 mb-2">Email</label>
+                <input 
+                  type="email" 
+                  required
+                  className="w-full px-4 py-3 bg-slate-800 text-white rounded-lg border border-slate-700 focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none transition-all placeholder-slate-500"
+                  placeholder="seu@email.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                />
+                <p className="text-xs text-slate-500 mt-2">
+                  Enviaremos um link de acesso para o seu email. Não precisa de senha.
+                </p>
+              </div>
+              <button 
+                type="submit" 
+                disabled={loading}
+                className="w-full py-3 bg-brand-600 text-white rounded-lg font-bold hover:bg-brand-500 transition-colors disabled:opacity-50 shadow-lg shadow-brand-900/20 flex items-center justify-center gap-2"
+              >
+                {loading ? <Loader2 className="animate-spin" /> : 'Entrar na Plataforma'}
+              </button>
+            </form>
+          </>
+        )}
+      </div>
+    </div>
+  );
+};
+
+// --- DASHBOARD COMPONENTS ---
+
+const DashboardLayout = ({ user, children, onLogout }: any) => {
+  return (
+    <div className="min-h-screen bg-slate-950 flex">
+      {/* Sidebar */}
+      <aside className="w-72 bg-slate-900 border-r border-slate-800 text-slate-300 flex-shrink-0 hidden md:flex flex-col">
+        <div className="p-8 border-b border-slate-800">
+           <div className="flex items-center gap-3">
+              <div className="w-8 h-8 bg-brand-600 rounded-lg flex items-center justify-center text-white font-bold">W</div>
+              <div className="font-bold text-2xl text-white">WebNova</div>
+           </div>
+           <div className="text-xs text-brand-400 font-medium mt-2 pl-11">Painel do Cliente</div>
+        </div>
+        
+        <div className="flex-grow p-4 space-y-2 overflow-y-auto">
+          <div className="px-4 py-2 text-xs font-bold uppercase text-slate-500 tracking-wider">Menu Principal</div>
+          
+          <button className="w-full flex items-center gap-3 px-4 py-3 text-white bg-brand-600/10 border border-brand-500/20 rounded-xl hover:bg-brand-600/20 transition-all">
+            <Layout size={20} className="text-brand-400" /> Visão Geral
+          </button>
+
+          {(user.plan === PlanType.BLOG || user.plan === PlanType.ADMIN) && (
+             <button className="w-full flex items-center gap-3 px-4 py-3 text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl transition-all">
+               <FileText size={20} /> Postagens (Blog)
+             </button>
+          )}
+
+          {(user.plan === PlanType.ECOMMERCE || user.plan === PlanType.ADMIN) && (
+            <>
+              <button className="w-full flex items-center gap-3 px-4 py-3 text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl transition-all">
+                <ShoppingBag size={20} /> Produtos
+              </button>
+              <button className="w-full flex items-center gap-3 px-4 py-3 text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl transition-all">
+                <Users size={20} /> Pedidos
+              </button>
+            </>
+          )}
+
+          <button className="w-full flex items-center gap-3 px-4 py-3 text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl transition-all">
+             <MessageSquare size={20} /> Suporte VIP
+          </button>
+          
+          <button className="w-full flex items-center gap-3 px-4 py-3 text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl transition-all">
+             <Settings size={20} /> Configurações
+          </button>
+        </div>
+
+        <div className="p-4 m-4 bg-slate-800/50 rounded-2xl border border-slate-800">
+          <div className="flex items-center gap-3 mb-4">
+             <img src={user.avatarUrl} className="w-10 h-10 rounded-full border border-slate-600" alt="avatar"/>
+             <div className="overflow-hidden">
+               <p className="text-sm font-bold text-white truncate">{user.name}</p>
+               <p className="text-xs text-slate-500 truncate">{user.email}</p>
+             </div>
+          </div>
+          <button onClick={onLogout} className="w-full py-2 flex items-center justify-center gap-2 text-sm text-red-400 hover:bg-red-500/10 rounded-lg transition-all">
+            <LogOut size={16} /> Sair
+          </button>
+        </div>
+      </aside>
+
+      {/* Main Content */}
+      <main className="flex-1 flex flex-col min-w-0 overflow-hidden bg-slate-950 relative">
+        {/* Background Glow */}
+        <div className="absolute top-0 left-0 w-full h-96 bg-brand-900/10 blur-[100px] pointer-events-none"></div>
+
+        {/* Mobile Header */}
+        <header className="md:hidden bg-slate-900/80 backdrop-blur-md border-b border-slate-800 text-white p-4 flex justify-between items-center sticky top-0 z-20">
+          <span className="font-bold text-xl">WebNova</span>
+          <button onClick={onLogout}><LogOut size={20} /></button>
+        </header>
+
+        <div className="flex-1 overflow-auto p-6 md:p-10 relative z-10">
+           {children}
+        </div>
+      </main>
+    </div>
+  );
+};
+
+const DashboardHome = ({ user }: { user: User }) => {
+  return (
+    <div className="space-y-8 max-w-6xl mx-auto">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+           <h1 className="text-3xl font-bold text-white mb-1">Olá, {user.name.split(' ')[0]} 👋</h1>
+           <p className="text-slate-400">Aqui está o resumo do seu site hoje.</p>
+        </div>
+        <div className="inline-flex items-center px-4 py-2 bg-green-500/10 border border-green-500/20 text-green-400 rounded-full text-sm font-bold">
+           <span className="w-2 h-2 bg-green-500 rounded-full mr-2 shadow-[0_0_10px_rgba(34,197,94,0.5)]"></span>
+           Status: Site Ativo
+        </div>
+      </div>
+
+      {/* Stats Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+         <div className="bg-slate-900 p-6 rounded-2xl shadow-lg border border-slate-800 hover:border-slate-700 transition-colors">
+            <div className="flex justify-between items-start mb-4">
+               <div className="p-2 bg-blue-500/10 rounded-lg text-blue-400">
+                  <ShieldCheck size={24} />
+               </div>
+            </div>
+            <div className="text-slate-400 text-sm font-medium mb-1">Plano Atual</div>
+            <div className="text-2xl font-bold text-white">{PLANS.find(p => p.id === user.plan)?.title || 'Admin'}</div>
+            <div className="mt-4 text-xs text-slate-500">Expira em: {new Date(user.planExpiry || '').toLocaleDateString('pt-BR')}</div>
+         </div>
+         <div className="bg-slate-900 p-6 rounded-2xl shadow-lg border border-slate-800 hover:border-slate-700 transition-colors">
+            <div className="flex justify-between items-start mb-4">
+               <div className="p-2 bg-purple-500/10 rounded-lg text-purple-400">
+                  <MessageSquare size={24} />
+               </div>
+            </div>
+            <div className="text-slate-400 text-sm font-medium mb-1">Suportes Restantes</div>
+            <div className="text-2xl font-bold text-white">Ilimitado</div>
+            <div className="mt-4 text-xs text-green-400 font-bold">VIP Ativado</div>
+         </div>
+         <div className="bg-slate-900 p-6 rounded-2xl shadow-lg border border-slate-800 hover:border-slate-700 transition-colors">
+            <div className="flex justify-between items-start mb-4">
+               <div className="p-2 bg-brand-500/10 rounded-lg text-brand-400">
+                  <Monitor size={24} />
+               </div>
+               <span className="text-green-400 text-xs font-bold bg-green-500/10 px-2 py-1 rounded">+12%</span>
+            </div>
+            <div className="text-slate-400 text-sm font-medium mb-1">Visitas (Este Mês)</div>
+            <div className="text-2xl font-bold text-white">1.245</div>
+            <div className="mt-4 text-xs text-slate-500">
+               Total visualizações únicas
+            </div>
+         </div>
+      </div>
+
+      {/* Feature Specific Panels */}
+      {user.plan === PlanType.BLOG && (
+        <div className="bg-slate-900 rounded-2xl shadow-lg border border-slate-800 p-8">
+          <div className="flex justify-between items-center mb-8">
+            <h3 className="font-bold text-xl text-white">Últimas Postagens</h3>
+            <button className="flex items-center gap-2 text-sm bg-brand-600 text-white px-5 py-2.5 rounded-xl hover:bg-brand-500 transition-colors font-medium">
+              <Plus size={18} /> Nova Postagem
+            </button>
+          </div>
+          <div className="space-y-4">
+             {[1,2,3].map(i => (
+               <div key={i} className="flex items-center justify-between p-5 bg-slate-800/50 rounded-xl border border-slate-800 hover:border-slate-700 transition-all">
+                  <div>
+                    <div className="font-bold text-white mb-1">Como aumentar suas vendas online</div>
+                    <div className="text-xs text-slate-500">Publicado em 12/10/2023 • 342 visualizações</div>
+                  </div>
+                  <button className="text-brand-400 text-sm font-medium hover:text-white transition-colors">Editar</button>
+               </div>
+             ))}
+          </div>
+        </div>
+      )}
+
+      {user.plan === PlanType.ECOMMERCE && (
+        <div className="grid md:grid-cols-2 gap-6">
+           <div className="bg-slate-900 rounded-2xl shadow-lg border border-slate-800 p-8">
+             <div className="flex justify-between items-center mb-6">
+               <h3 className="font-bold text-xl text-white">Pedidos Recentes</h3>
+             </div>
+             <div className="space-y-4">
+                {[1,2,3].map(i => (
+                  <div key={i} className="flex items-center justify-between border-b border-slate-800 pb-4 last:border-0 last:pb-0">
+                     <div className="text-sm">
+                       <span className="font-bold text-slate-200 block mb-1">#PED-00{i}</span>
+                       <span className="block text-slate-500">R$ 149,90 • Pix</span>
+                     </div>
+                     <span className="px-3 py-1 bg-yellow-500/10 text-yellow-500 border border-yellow-500/20 rounded-full text-xs font-bold">Pendente</span>
+                  </div>
+                ))}
+             </div>
+           </div>
+           <div className="bg-slate-900 rounded-2xl shadow-lg border border-slate-800 p-8">
+              <h3 className="font-bold text-xl text-white mb-6">Ações Rápidas</h3>
+              <div className="grid grid-cols-2 gap-4">
+                 <button className="p-6 bg-slate-800 rounded-2xl flex flex-col items-center justify-center text-slate-300 hover:bg-brand-600 hover:text-white transition-all group">
+                    <Plus size={28} className="mb-3 text-brand-500 group-hover:text-white" />
+                    <span className="font-bold text-sm">Add Produto</span>
+                 </button>
+                 <button className="p-6 bg-slate-800 rounded-2xl flex flex-col items-center justify-center text-slate-300 hover:bg-purple-600 hover:text-white transition-all group">
+                    <Settings size={28} className="mb-3 text-purple-500 group-hover:text-white" />
+                    <span className="font-bold text-sm">Config Loja</span>
+                 </button>
+              </div>
+           </div>
+        </div>
+      )}
+
+      {/* Common Support Area */}
+      <div className="bg-gradient-to-r from-brand-900 to-slate-900 rounded-2xl shadow-xl border border-brand-500/20 p-8 text-white flex flex-col md:flex-row items-center justify-between relative overflow-hidden">
+         <div className="absolute top-0 right-0 w-64 h-64 bg-brand-500/10 rounded-full blur-3xl -mr-16 -mt-16"></div>
+         <div className="mb-6 md:mb-0 relative z-10">
+            <h3 className="text-2xl font-bold mb-2">Precisa de ajuda com seu site?</h3>
+            <p className="text-brand-100 text-sm max-w-lg">Nossa equipe de suporte VIP está disponível para realizar ajustes, tirar dúvidas ou auxiliar no marketing.</p>
+         </div>
+         <a href={`https://wa.me/${CONTACT_WHATSAPP}`} target="_blank" rel="noreferrer" className="relative z-10 px-8 py-4 bg-green-600 hover:bg-green-500 text-white rounded-xl font-bold transition-all shadow-lg shadow-green-900/40 flex items-center gap-2 transform hover:-translate-y-1">
+           <MessageSquare size={20} /> Chamar no WhatsApp
+         </a>
       </div>
     </div>
   );
@@ -787,282 +1073,6 @@ const LandingPage = ({ onPlanSelect, onLoginClick }: { onPlanSelect: (plan: any)
           © {new Date().getFullYear()} WebNova. Todos os direitos reservados.
         </div>
       </footer>
-    </div>
-  );
-};
-
-// --- AUTH MOCK ---
-
-const LoginModal = ({ isOpen, onClose, onLogin }: any) => {
-  const [email, setEmail] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [sent, setSent] = useState(false);
-
-  if (!isOpen) return null;
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    
-    // Using Real Supabase Auth (Magic Link)
-    const { error } = await loginWithEmail(email);
-
-    if (error) {
-      alert("Erro ao enviar login: " + error.message);
-      setLoading(false);
-    } else {
-      setSent(true);
-      setLoading(false);
-    }
-  };
-
-  return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/80 backdrop-blur-md" onClick={onClose}></div>
-      <div className="bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl w-full max-w-md p-8 relative z-10">
-        
-        {sent ? (
-          <div className="text-center">
-            <div className="w-16 h-16 bg-green-500/10 rounded-full flex items-center justify-center text-green-500 mx-auto mb-4">
-               <Mail size={32} />
-            </div>
-            <h2 className="text-2xl font-bold mb-2 text-white">Verifique seu Email</h2>
-            <p className="text-slate-400 mb-6">Enviamos um link mágico de acesso para <strong>{email}</strong>.</p>
-            <button onClick={onClose} className="text-brand-400 font-bold hover:text-brand-300">Fechar</button>
-          </div>
-        ) : (
-          <>
-            <h2 className="text-2xl font-bold mb-6 text-white">Acesse sua Conta</h2>
-            <form onSubmit={handleSubmit} className="space-y-5">
-              <div>
-                <label className="block text-sm font-medium text-slate-400 mb-2">Email</label>
-                <input 
-                  type="email" 
-                  required
-                  className="w-full px-4 py-3 bg-slate-800 text-white rounded-lg border border-slate-700 focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none transition-all placeholder-slate-500"
-                  placeholder="seu@email.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                />
-                <p className="text-xs text-slate-500 mt-2">
-                  Enviaremos um link de acesso para o seu email. Não precisa de senha.
-                </p>
-              </div>
-              <button 
-                type="submit" 
-                disabled={loading}
-                className="w-full py-3 bg-brand-600 text-white rounded-lg font-bold hover:bg-brand-500 transition-colors disabled:opacity-50 shadow-lg shadow-brand-900/20 flex items-center justify-center gap-2"
-              >
-                {loading ? <Loader2 className="animate-spin" /> : 'Entrar na Plataforma'}
-              </button>
-            </form>
-          </>
-        )}
-      </div>
-    </div>
-  );
-};
-
-// --- DASHBOARD COMPONENTS ---
-
-const DashboardLayout = ({ user, children, onLogout }: any) => {
-  return (
-    <div className="min-h-screen bg-slate-950 flex">
-      {/* Sidebar */}
-      <aside className="w-72 bg-slate-900 border-r border-slate-800 text-slate-300 flex-shrink-0 hidden md:flex flex-col">
-        <div className="p-8 border-b border-slate-800">
-           <div className="flex items-center gap-3">
-              <div className="w-8 h-8 bg-brand-600 rounded-lg flex items-center justify-center text-white font-bold">W</div>
-              <div className="font-bold text-2xl text-white">WebNova</div>
-           </div>
-           <div className="text-xs text-brand-400 font-medium mt-2 pl-11">Painel do Cliente</div>
-        </div>
-        
-        <div className="flex-grow p-4 space-y-2 overflow-y-auto">
-          <div className="px-4 py-2 text-xs font-bold uppercase text-slate-500 tracking-wider">Menu Principal</div>
-          
-          <button className="w-full flex items-center gap-3 px-4 py-3 text-white bg-brand-600/10 border border-brand-500/20 rounded-xl hover:bg-brand-600/20 transition-all">
-            <Layout size={20} className="text-brand-400" /> Visão Geral
-          </button>
-
-          {(user.plan === PlanType.BLOG || user.plan === PlanType.ADMIN) && (
-             <button className="w-full flex items-center gap-3 px-4 py-3 text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl transition-all">
-               <FileText size={20} /> Postagens (Blog)
-             </button>
-          )}
-
-          {(user.plan === PlanType.ECOMMERCE || user.plan === PlanType.ADMIN) && (
-            <>
-              <button className="w-full flex items-center gap-3 px-4 py-3 text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl transition-all">
-                <ShoppingBag size={20} /> Produtos
-              </button>
-              <button className="w-full flex items-center gap-3 px-4 py-3 text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl transition-all">
-                <Users size={20} /> Pedidos
-              </button>
-            </>
-          )}
-
-          <button className="w-full flex items-center gap-3 px-4 py-3 text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl transition-all">
-             <MessageSquare size={20} /> Suporte VIP
-          </button>
-          
-          <button className="w-full flex items-center gap-3 px-4 py-3 text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl transition-all">
-             <Settings size={20} /> Configurações
-          </button>
-        </div>
-
-        <div className="p-4 m-4 bg-slate-800/50 rounded-2xl border border-slate-800">
-          <div className="flex items-center gap-3 mb-4">
-             <img src={user.avatarUrl} className="w-10 h-10 rounded-full border border-slate-600" alt="avatar"/>
-             <div className="overflow-hidden">
-               <p className="text-sm font-bold text-white truncate">{user.name}</p>
-               <p className="text-xs text-slate-500 truncate">{user.email}</p>
-             </div>
-          </div>
-          <button onClick={onLogout} className="w-full py-2 flex items-center justify-center gap-2 text-sm text-red-400 hover:bg-red-500/10 rounded-lg transition-all">
-            <LogOut size={16} /> Sair
-          </button>
-        </div>
-      </aside>
-
-      {/* Main Content */}
-      <main className="flex-1 flex flex-col min-w-0 overflow-hidden bg-slate-950 relative">
-        {/* Background Glow */}
-        <div className="absolute top-0 left-0 w-full h-96 bg-brand-900/10 blur-[100px] pointer-events-none"></div>
-
-        {/* Mobile Header */}
-        <header className="md:hidden bg-slate-900/80 backdrop-blur-md border-b border-slate-800 text-white p-4 flex justify-between items-center sticky top-0 z-20">
-          <span className="font-bold text-xl">WebNova</span>
-          <button onClick={onLogout}><LogOut size={20} /></button>
-        </header>
-
-        <div className="flex-1 overflow-auto p-6 md:p-10 relative z-10">
-           {children}
-        </div>
-      </main>
-    </div>
-  );
-};
-
-const DashboardHome = ({ user }: { user: User }) => {
-  return (
-    <div className="space-y-8 max-w-6xl mx-auto">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-           <h1 className="text-3xl font-bold text-white mb-1">Olá, {user.name.split(' ')[0]} 👋</h1>
-           <p className="text-slate-400">Aqui está o resumo do seu site hoje.</p>
-        </div>
-        <div className="inline-flex items-center px-4 py-2 bg-green-500/10 border border-green-500/20 text-green-400 rounded-full text-sm font-bold">
-           <span className="w-2 h-2 bg-green-500 rounded-full mr-2 shadow-[0_0_10px_rgba(34,197,94,0.5)]"></span>
-           Status: Site Ativo
-        </div>
-      </div>
-
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-         <div className="bg-slate-900 p-6 rounded-2xl shadow-lg border border-slate-800 hover:border-slate-700 transition-colors">
-            <div className="flex justify-between items-start mb-4">
-               <div className="p-2 bg-blue-500/10 rounded-lg text-blue-400">
-                  <ShieldCheck size={24} />
-               </div>
-            </div>
-            <div className="text-slate-400 text-sm font-medium mb-1">Plano Atual</div>
-            <div className="text-2xl font-bold text-white">{PLANS.find(p => p.id === user.plan)?.title || 'Admin'}</div>
-            <div className="mt-4 text-xs text-slate-500">Expira em: {new Date(user.planExpiry || '').toLocaleDateString('pt-BR')}</div>
-         </div>
-         <div className="bg-slate-900 p-6 rounded-2xl shadow-lg border border-slate-800 hover:border-slate-700 transition-colors">
-            <div className="flex justify-between items-start mb-4">
-               <div className="p-2 bg-purple-500/10 rounded-lg text-purple-400">
-                  <MessageSquare size={24} />
-               </div>
-            </div>
-            <div className="text-slate-400 text-sm font-medium mb-1">Suportes Restantes</div>
-            <div className="text-2xl font-bold text-white">Ilimitado</div>
-            <div className="mt-4 text-xs text-green-400 font-bold">VIP Ativado</div>
-         </div>
-         <div className="bg-slate-900 p-6 rounded-2xl shadow-lg border border-slate-800 hover:border-slate-700 transition-colors">
-            <div className="flex justify-between items-start mb-4">
-               <div className="p-2 bg-brand-500/10 rounded-lg text-brand-400">
-                  <Monitor size={24} />
-               </div>
-               <span className="text-green-400 text-xs font-bold bg-green-500/10 px-2 py-1 rounded">+12%</span>
-            </div>
-            <div className="text-slate-400 text-sm font-medium mb-1">Visitas (Este Mês)</div>
-            <div className="text-2xl font-bold text-white">1.245</div>
-            <div className="mt-4 text-xs text-slate-500">
-               Total visualizações únicas
-            </div>
-         </div>
-      </div>
-
-      {/* Feature Specific Panels */}
-      {user.plan === PlanType.BLOG && (
-        <div className="bg-slate-900 rounded-2xl shadow-lg border border-slate-800 p-8">
-          <div className="flex justify-between items-center mb-8">
-            <h3 className="font-bold text-xl text-white">Últimas Postagens</h3>
-            <button className="flex items-center gap-2 text-sm bg-brand-600 text-white px-5 py-2.5 rounded-xl hover:bg-brand-500 transition-colors font-medium">
-              <Plus size={18} /> Nova Postagem
-            </button>
-          </div>
-          <div className="space-y-4">
-             {[1,2,3].map(i => (
-               <div key={i} className="flex items-center justify-between p-5 bg-slate-800/50 rounded-xl border border-slate-800 hover:border-slate-700 transition-all">
-                  <div>
-                    <div className="font-bold text-white mb-1">Como aumentar suas vendas online</div>
-                    <div className="text-xs text-slate-500">Publicado em 12/10/2023 • 342 visualizações</div>
-                  </div>
-                  <button className="text-brand-400 text-sm font-medium hover:text-white transition-colors">Editar</button>
-               </div>
-             ))}
-          </div>
-        </div>
-      )}
-
-      {user.plan === PlanType.ECOMMERCE && (
-        <div className="grid md:grid-cols-2 gap-6">
-           <div className="bg-slate-900 rounded-2xl shadow-lg border border-slate-800 p-8">
-             <div className="flex justify-between items-center mb-6">
-               <h3 className="font-bold text-xl text-white">Pedidos Recentes</h3>
-             </div>
-             <div className="space-y-4">
-                {[1,2,3].map(i => (
-                  <div key={i} className="flex items-center justify-between border-b border-slate-800 pb-4 last:border-0 last:pb-0">
-                     <div className="text-sm">
-                       <span className="font-bold text-slate-200 block mb-1">#PED-00{i}</span>
-                       <span className="block text-slate-500">R$ 149,90 • Pix</span>
-                     </div>
-                     <span className="px-3 py-1 bg-yellow-500/10 text-yellow-500 border border-yellow-500/20 rounded-full text-xs font-bold">Pendente</span>
-                  </div>
-                ))}
-             </div>
-           </div>
-           <div className="bg-slate-900 rounded-2xl shadow-lg border border-slate-800 p-8">
-              <h3 className="font-bold text-xl text-white mb-6">Ações Rápidas</h3>
-              <div className="grid grid-cols-2 gap-4">
-                 <button className="p-6 bg-slate-800 rounded-2xl flex flex-col items-center justify-center text-slate-300 hover:bg-brand-600 hover:text-white transition-all group">
-                    <Plus size={28} className="mb-3 text-brand-500 group-hover:text-white" />
-                    <span className="font-bold text-sm">Add Produto</span>
-                 </button>
-                 <button className="p-6 bg-slate-800 rounded-2xl flex flex-col items-center justify-center text-slate-300 hover:bg-purple-600 hover:text-white transition-all group">
-                    <Settings size={28} className="mb-3 text-purple-500 group-hover:text-white" />
-                    <span className="font-bold text-sm">Config Loja</span>
-                 </button>
-              </div>
-           </div>
-        </div>
-      )}
-
-      {/* Common Support Area */}
-      <div className="bg-gradient-to-r from-brand-900 to-slate-900 rounded-2xl shadow-xl border border-brand-500/20 p-8 text-white flex flex-col md:flex-row items-center justify-between relative overflow-hidden">
-         <div className="absolute top-0 right-0 w-64 h-64 bg-brand-500/10 rounded-full blur-3xl -mr-16 -mt-16"></div>
-         <div className="mb-6 md:mb-0 relative z-10">
-            <h3 className="text-2xl font-bold mb-2">Precisa de ajuda com seu site?</h3>
-            <p className="text-brand-100 text-sm max-w-lg">Nossa equipe de suporte VIP está disponível para realizar ajustes, tirar dúvidas ou auxiliar no marketing.</p>
-         </div>
-         <a href={`https://wa.me/${CONTACT_WHATSAPP}`} target="_blank" rel="noreferrer" className="relative z-10 px-8 py-4 bg-green-600 hover:bg-green-500 text-white rounded-xl font-bold transition-all shadow-lg shadow-green-900/40 flex items-center gap-2 transform hover:-translate-y-1">
-           <MessageSquare size={20} /> Chamar no WhatsApp
-         </a>
-      </div>
     </div>
   );
 };
