@@ -1,6 +1,6 @@
 import { MercadoPagoConfig, Preference } from 'mercadopago';
 import { NextResponse } from 'next/server';
-// Correção: Subindo 2 níveis (checkout -> api -> app) para achar constants
+// Importa constantes e tipos subindo os níveis de pasta corretos
 import { MP_ACCESS_TOKEN, VIP_SUPPORT_PRICES, UPSALE_PRICE } from '../../constants';
 import { PlanType } from '../../types';
 
@@ -30,7 +30,7 @@ export async function POST(request: Request) {
             id: 'hosting-setup',
             title: 'Hospedagem Premium + Domínio (.com.br) - 1 Ano',
             quantity: 1,
-            // CORREÇÃO: Usando a constante importada em vez do valor fixo 120
+            // Usa a constante importada para permitir testes com centavos ou valor real
             unit_price: UPSALE_PRICE, 
             currency_id: 'BRL',
         });
@@ -60,20 +60,27 @@ export async function POST(request: Request) {
         payer: {
           email: email, 
         },
+        // CONFIGURAÇÃO CRÍTICA PARA PIX
+        // Ao passar arrays vazios, instruímos o Mercado Pago a NÃO excluir nenhum método.
+        // Isso força a exibição de PIX, Boleto e Cartões disponíveis para a conta.
         payment_methods: {
-            excluded_payment_types: [],
+            excluded_payment_types: [], 
             excluded_payment_methods: [],
             installments: 12
         },
         // Nome na fatura do cartão
         statement_descriptor: 'WEBNOVA SAAS',
         
+        // Redirecionamentos
         back_urls: {
           success: `${baseUrl}/?status=success`,
           failure: `${baseUrl}/?status=failure`,
           pending: `${baseUrl}/?status=pending`,
         },
+        auto_return: undefined, // Desativado para evitar erro de validação em localhost/vercel em alguns casos
         notification_url: `${baseUrl}/api/webhooks/mercadopago`,
+        
+        // Metadados para o Webhook identificar o pedido
         metadata: {
           plan_id: planId,
           include_hosting: includeHosting ? 'true' : 'false',
