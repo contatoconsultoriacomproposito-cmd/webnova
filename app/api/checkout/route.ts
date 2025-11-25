@@ -5,10 +5,15 @@ import { MP_ACCESS_TOKEN, VIP_SUPPORT_PRICES, UPSALE_PRICE } from '../../constan
 import { PlanType } from '../../types';
 
 // Configura o cliente do Mercado Pago com sua credencial
+// Se a chave não estiver configurada, isso pode gerar erro na inicialização ou no uso
 const client = new MercadoPagoConfig({ accessToken: MP_ACCESS_TOKEN });
 
 export async function POST(request: Request) {
   try {
+    if (!MP_ACCESS_TOKEN || MP_ACCESS_TOKEN.includes('COLE_SEU_TOKEN')) {
+        throw new Error("Access Token do Mercado Pago não configurado corretamente.");
+    }
+
     const body = await request.json();
     const { planId, title, price, includeHosting, includeSupport, email } = body;
 
@@ -50,7 +55,6 @@ export async function POST(request: Request) {
     }
 
     // Define a URL base (Localhost ou Produção)
-    // Remove barra no final se houver para evitar duplicação
     const baseUrl = (process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000').replace(/\/$/, '');
 
     // Cria a preferência de pagamento no Mercado Pago
@@ -79,7 +83,7 @@ export async function POST(request: Request) {
           failure: `${baseUrl}/?status=failure`,
           pending: `${baseUrl}/?status=pending`,
         },
-        auto_return: undefined, // Mantém undefined para evitar validações estritas de URL em alguns navegadores
+        auto_return: undefined, // Mantém undefined para evitar validações estritas de URL
         notification_url: `${baseUrl}/api/webhooks/mercadopago`,
         
         // Metadados para o Webhook identificar o pedido
@@ -96,11 +100,16 @@ export async function POST(request: Request) {
   } catch (error: any) {
     console.error('------- ERRO MERCADO PAGO -------');
     console.error(error);
-    if (error.cause) console.error('Causa:', JSON.stringify(error.cause, null, 2));
+    const errorDetails = error.cause ? JSON.stringify(error.cause) : error.message;
+    console.error('Detalhes:', errorDetails);
     console.error('---------------------------------');
     
+    // Retorna o erro detalhado para o frontend mostrar no alert
     return NextResponse.json(
-      { error: 'Erro ao processar pagamento no servidor' }, 
+      { 
+        error: 'Erro ao processar pagamento',
+        details: errorDetails || 'Erro desconhecido no servidor'
+      }, 
       { status: 500 }
     );
   }

@@ -1,98 +1,89 @@
-import { MercadoPagoConfig, Preference } from 'mercadopago';
+import { MercadoPagoConfig, Payment } from 'mercadopago';
 import { NextResponse } from 'next/server';
-// Correção: Subindo 2 níveis (checkout -> api -> app) para achar constants
-import { MP_ACCESS_TOKEN, VIP_SUPPORT_PRICES, UPSALE_PRICE } from '../../../constants';
-import { PlanType } from '../../../types';
+import { MP_ACCESS_TOKEN } from '../../../constants';
+import { supabaseAdmin } from '../../../supabaseAdmin';
 
-// Configura o cliente do Mercado Pago com sua credencial
+// Configura o cliente do Mercado Pago
 const client = new MercadoPagoConfig({ accessToken: MP_ACCESS_TOKEN });
 
 export async function POST(request: Request) {
   try {
-    const body = await request.json();
-    const { planId, title, price, includeHosting, includeSupport, email } = body;
+    // 1. Validação da Notificação
+    // O Mercado Pago envia o ID do recurso na URL ou no corpo
+    const url = new URL(request.url);
+    const topic = url.searchParams.get('topic') || url.searchParams.get('type');
+    const id = url.searchParams.get('id') || url.searchParams.get('data.id');
 
-    // Constrói a lista de itens para o checkout
-    const items = [];
-
-    // 1. Item Principal: O Site
-    items.push({
-        id: planId,
-        title: title,
-        quantity: 1,
-        unit_price: Number(price),
-        currency_id: 'BRL',
-    });
-
-    // 2. Opcional: Hospedagem + Domínio
-    if (includeHosting) {
-        items.push({
-            id: 'hosting-setup',
-            title: 'Hospedagem Premium + Domínio (.com.br) - 1 Ano',
-            quantity: 1,
-            // CORREÇÃO: Usando a constante importada em vez do valor fixo 120
-            unit_price: UPSALE_PRICE, 
-            currency_id: 'BRL',
-        });
+    // Se não for um pagamento, ignora (pode ser 'merchant_order' etc)
+    if (topic !== 'payment') {
+        return NextResponse.json({ status: 'ignored' });
     }
 
-    // 3. Opcional: Suporte VIP
-    if (includeSupport) {
-        // Busca o preço correto baseado no tipo de plano
-        const supportPrice = VIP_SUPPORT_PRICES[planId as PlanType] || 250; 
-        items.push({
-            id: 'vip-support',
-            title: 'Suporte VIP Ilimitado Premium',
-            quantity: 1,
-            unit_price: supportPrice,
-            currency_id: 'BRL',
-        });
+    if (!id) {
+        return NextResponse.json({ error: 'ID missing' }, { status: 400 });
     }
 
-    // Define a URL base (Localhost ou Produção)
-    const baseUrl = (process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000').replace(/\/$/, '');
+    // 2. Consulta o Pagamento no Mercado Pago para confirmar o status real
+    const payment = new Payment(client);
+    const paymentData = await payment.get({ id: id });
 
-    // Cria a preferência de pagamento no Mercado Pago
-    const preference = new Preference(client);
-    const result = await preference.create({
-      body: {
-        items: items, // Envia a lista detalhada
-        payer: {
-          email: email, 
-        },
-        payment_methods: {
-            excluded_payment_types: [],
-            excluded_payment_methods: [],
-            installments: 12
-        },
-        // Nome na fatura do cartão
-        statement_descriptor: 'WEBNOVA SAAS',
-        
-        back_urls: {
-          success: `${baseUrl}/?status=success`,
-          failure: `${baseUrl}/?status=failure`,
-          pending: `${baseUrl}/?status=pending`,
-        },
-        notification_url: `${baseUrl}/api/webhooks/mercadopago`,
-        metadata: {
-          plan_id: planId,
-          include_hosting: includeHosting ? 'true' : 'false',
-          include_support: includeSupport ? 'true' : 'false'
+    console.log(`🔔 Webhook recebido para pagamento ${id}. Status: ${paymentData.status}`);
+
+    // 3. Se estiver Aprovado, libera o acesso
+    if (paymentData.status === 'approved') {
+        const metadata = paymentData.metadata;
+        const payerEmail = paymentData.payer?.email || metadata?.payer_email; // Metadata customizada ou email do pagador
+        const planId = metadata?.plan_id;
+
+        console.log(`✅ Pagamento aprovado para: ${payerEmail}. Plano: ${planId}`);
+
+        if (payerEmail && planId) {
+            // 4. Atualiza o usuário no Supabase
+            
+            // Primeiro, achamos o ID do usuário pelo email
+            // Nota: Como estamos usando supabaseAdmin, podemos listar usuários
+            // Mas a tabela 'profiles' é mais fácil de consultar
+            const { data: userProfile, error: searchError } = await supabaseAdmin
+                .from('profiles')
+                .select('id')
+                .eq('email', payerEmail)
+                .single();
+
+            if (searchError || !userProfile) {
+                console.error(`❌ Usuário não encontrado para o email ${payerEmail}`);
+                // Aqui poderíamos criar um usuário se não existisse, ou apenas logar o erro
+                return NextResponse.json({ error: 'User not found' }, { status: 404 });
+            }
+
+            // Calcula nova data de expiração (+1 ano)
+            const newExpiry = new Date();
+            newExpiry.setFullYear(newExpiry.getFullYear() + 1);
+
+            // Atualiza o perfil
+            const { error: updateError } = await supabaseAdmin
+                .from('profiles')
+                .update({
+                    role: planId, // Atualiza o plano (OnePage, Blog, etc)
+                    // Aqui você precisaria ter uma coluna 'plan_expiry' no seu banco.
+                    // Se não criou ainda, o Supabase vai ignorar ou dar erro se for strict.
+                    // Vamos assumir que você vai criar ou já criou.
+                    // plan_expiry: newExpiry.toISOString() 
+                })
+                .eq('id', userProfile.id);
+
+            if (updateError) {
+                console.error('❌ Erro ao atualizar perfil:', updateError);
+                return NextResponse.json({ error: 'Update failed' }, { status: 500 });
+            }
+
+            console.log(`🎉 Plano liberado com sucesso para ${payerEmail}!`);
         }
-      },
-    });
+    }
 
-    return NextResponse.json({ url: result.init_point });
+    return NextResponse.json({ status: 'success' });
 
-  } catch (error: any) {
-    console.error('------- ERRO MERCADO PAGO -------');
-    console.error(error);
-    if (error.cause) console.error('Causa:', JSON.stringify(error.cause, null, 2));
-    console.error('---------------------------------');
-    
-    return NextResponse.json(
-      { error: 'Erro ao processar pagamento no servidor' }, 
-      { status: 500 }
-    );
+  } catch (error) {
+    console.error('Erro no Webhook:', error);
+    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
 }
