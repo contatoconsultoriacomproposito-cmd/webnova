@@ -57,9 +57,8 @@ export async function POST(request: Request) {
     // Define a URL base (Localhost ou Produção)
     const baseUrl = (process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000').replace(/\/$/, '');
 
-    // Cria a preferência de pagamento no Mercado Pago
-    const preference = new Preference(client);
-    const result = await preference.create({
+    // Configuração base da preferência
+    const preferenceData = {
       body: {
         items: items, // Envia a lista detalhada
         payer: {
@@ -67,12 +66,11 @@ export async function POST(request: Request) {
         },
         // CONFIGURAÇÃO DE MÉTODOS DE PAGAMENTO
         // 'excluded_payment_types: []' força o Mercado Pago a não esconder nada (Pix, Boleto, Cartão)
-        // 'default_payment_method_id: pix' tenta iniciar o checkout já com o PIX aberto
+        // REMOVIDO: default_payment_method_id: 'pix' (Causava erro de validação se o PIX não estivesse disponível)
         payment_methods: {
             excluded_payment_types: [],
             excluded_payment_methods: [],
-            installments: 12,
-            default_payment_method_id: 'pix'
+            installments: 12
         },
         // Nome na fatura do cartão
         statement_descriptor: 'WEBNOVA SAAS',
@@ -93,7 +91,24 @@ export async function POST(request: Request) {
           include_support: includeSupport ? 'true' : 'false'
         }
       },
-    });
+    };
+
+    // Tenta criar a preferência com a configuração ideal
+    const preference = new Preference(client);
+    let result;
+
+    try {
+        result = await preference.create(preferenceData);
+    } catch (prefError) {
+        console.warn("Falha na criação da preferência ideal, tentando fallback sem payment_methods específicos...", prefError);
+        // FALLBACK: Se der erro (ex: PIX indisponível), remove a configuração de payment_methods e tenta de novo
+        // Isso garante que o checkout abra de qualquer jeito (Cartão/Boleto), evitando travar o cliente.
+        
+        // Correção TypeScript: Usamos 'as any' para permitir a deleção da propriedade obrigatória
+        delete (preferenceData.body as any).payment_methods;
+        
+        result = await preference.create(preferenceData);
+    }
 
     return NextResponse.json({ url: result.init_point });
 
