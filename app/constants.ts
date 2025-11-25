@@ -21,7 +21,7 @@ export const HOSTING_RENEWAL_OPTIONS = [
 ];
 
 // CREDENCIAIS DO MERCADO PAGO
-export const MP_ACCESS_TOKEN = 'APP_USR-7136344428345971-112414-b6943ac1930b8108387e1b6034385ae7-1523295083';
+export const MP_ACCESS_TOKEN = 'APP_USR-7307423595236182-112414-d6ae49903b7f882f9979cf8dd126ec92-371667048';
 
 // CREDENCIAIS ADMIN SUPABASE (Necessário para o Webhook)
 // Pegue em: Project Settings > API > service_role (secret)
@@ -31,7 +31,7 @@ export const PLANS: PlanDetails[] = [
   {
     id: PlanType.ONE_PAGE,
     title: 'One Page / Landing Page',
-    price: 1.00, // Valor de teste
+    price: 5.00, // Valor de teste
     description: 'Ideal para campanhas de vendas e profissionais liberais.',
     features: [
       'Site de página única (rolagem)',
@@ -44,7 +44,7 @@ export const PLANS: PlanDetails[] = [
   {
     id: PlanType.INSTITUTIONAL,
     title: 'Institucional',
-    price: 2.00, // Valor de teste
+    price: 6.00, // Valor de teste
     description: 'Para empresas que precisam apresentar seus serviços.',
     features: [
       'Até 5 páginas',
@@ -58,7 +58,7 @@ export const PLANS: PlanDetails[] = [
   {
     id: PlanType.BLOG,
     title: 'Portal de Notícias / Blog',
-    price: 3.00, // Valor de teste
+    price: 7.00, // Valor de teste
     description: 'Site dinâmico para produtores de conteúdo.',
     features: [
       'Área Administrativa para Posts',
@@ -71,7 +71,7 @@ export const PLANS: PlanDetails[] = [
   {
     id: PlanType.ECOMMERCE,
     title: 'Loja Virtual',
-    price: 2997.00, // Valor de teste
+    price: 8.00, // Valor de teste
     description: 'Venda seus produtos online com segurança.',
     features: [
       'Cadastro de Produtos e Categorias',
