@@ -14,27 +14,28 @@ const mapProfileToUser = (profile: any, authId: string, email: string): User => 
 };
 
 export const loginWithEmail = async (email: string) => {
-  // Lógica de Redirecionamento Inteligente:
-  // 1. Tenta usar a URL configurada na Vercel (NEXT_PUBLIC_BASE_URL)
-  // 2. Se não existir, tenta pegar a origem do navegador (window.location.origin)
-  // 3. Fallback final para localhost:3000
-  
+  // Lógica de Redirecionamento Fixada (Hardcoded)
+  // Isso garante que em produção sempre vá para a URL da Vercel, sem depender de variáveis de ambiente instáveis
+  const PRODUCTION_URL = 'https://webnova-seven.vercel.app';
   let redirectTo = 'http://localhost:3000';
 
-  if (process.env.NEXT_PUBLIC_BASE_URL) {
-    redirectTo = process.env.NEXT_PUBLIC_BASE_URL;
-  } else if (typeof window !== 'undefined') {
-    redirectTo = window.location.origin;
+  // Se estiver rodando no navegador (Client Side)
+  if (typeof window !== 'undefined') {
+    const hostname = window.location.hostname;
+    // Se NÃO for localhost, usa a URL de produção
+    if (hostname !== 'localhost' && hostname !== '127.0.0.1') {
+        redirectTo = PRODUCTION_URL;
+    }
   }
 
-  // Remove barra final se existir para evitar URLs duplas (ex: .com//)
+  // Remove barra final se existir para evitar URLs duplas
   redirectTo = redirectTo.replace(/\/$/, '');
 
   // Login via Magic Link (Email sem senha)
   const { data, error } = await supabase.auth.signInWithOtp({
     email,
     options: {
-      emailRedirectTo: redirectTo, // URL correta para onde o usuário volta
+      emailRedirectTo: redirectTo, // Agora aponta explicitamente para https://webnova-seven.vercel.app em produção
       shouldCreateUser: true,
       data: {
         full_name: email.split('@')[0],
