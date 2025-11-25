@@ -505,295 +505,7 @@ const PaymentModal = ({ plan, isOpen, onClose, currentUser }: { plan: any, isOpe
   );
 };
 
-// --- AUTH COMPONENTS ---
-
-const LoginModal = ({ isOpen, onClose, onLogin }: any) => {
-  const [email, setEmail] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [sent, setSent] = useState(false);
-
-  if (!isOpen) return null;
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    
-    const { error } = await loginWithEmail(email);
-
-    if (error) {
-      alert("Erro ao enviar login: " + error.message);
-      setLoading(false);
-    } else {
-      setSent(true);
-      setLoading(false);
-    }
-  };
-
-  return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/80 backdrop-blur-md" onClick={onClose}></div>
-      <div className="bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl w-full max-w-md p-8 relative z-10">
-        {sent ? (
-          <div className="text-center">
-            <div className="w-16 h-16 bg-green-500/10 rounded-full flex items-center justify-center text-green-500 mx-auto mb-4">
-               <Mail size={32} />
-            </div>
-            <h2 className="text-2xl font-bold mb-2 text-white">Verifique seu Email</h2>
-            <p className="text-slate-400 mb-6">Enviamos um link mágico de acesso para <strong>{email}</strong>.</p>
-            <button onClick={onClose} className="text-brand-400 font-bold hover:text-brand-300">Fechar</button>
-          </div>
-        ) : (
-          <>
-            <h2 className="text-2xl font-bold mb-6 text-white">Acesse sua Conta</h2>
-            <form onSubmit={handleSubmit} className="space-y-5">
-              <div>
-                <label className="block text-sm font-medium text-slate-400 mb-2">Email</label>
-                <input 
-                  type="email" 
-                  required
-                  className="w-full px-4 py-3 bg-slate-800 text-white rounded-lg border border-slate-700 focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none transition-all placeholder-slate-500"
-                  placeholder="seu@email.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                />
-                <p className="text-xs text-slate-500 mt-2">
-                  Enviaremos um link de acesso para o seu email. Não precisa de senha.
-                </p>
-              </div>
-              <button 
-                type="submit" 
-                disabled={loading}
-                className="w-full py-3 bg-brand-600 text-white rounded-lg font-bold hover:bg-brand-500 transition-colors disabled:opacity-50 shadow-lg shadow-brand-900/20 flex items-center justify-center gap-2"
-              >
-                {loading ? <Loader2 className="animate-spin" /> : 'Entrar na Plataforma'}
-              </button>
-            </form>
-          </>
-        )}
-      </div>
-    </div>
-  );
-};
-
-// --- DASHBOARD COMPONENTS ---
-
-const DashboardLayout = ({ user, children, onLogout }: any) => {
-  return (
-    <div className="min-h-screen bg-slate-950 flex">
-      <aside className="w-72 bg-slate-900 border-r border-slate-800 text-slate-300 flex-shrink-0 hidden md:flex flex-col">
-        <div className="p-8 border-b border-slate-800">
-           <div className="flex items-center gap-3">
-              <div className="w-8 h-8 bg-brand-600 rounded-lg flex items-center justify-center text-white font-bold">W</div>
-              <div className="font-bold text-2xl text-white">WebNova</div>
-           </div>
-           <div className="text-xs text-brand-400 font-medium mt-2 pl-11">Painel do Cliente</div>
-        </div>
-        
-        <div className="flex-grow p-4 space-y-2">
-          <button className="w-full flex items-center gap-3 px-4 py-3 text-white bg-brand-600/10 border border-brand-500/20 rounded-xl hover:bg-brand-600/20 transition-all">
-            <Layout size={20} className="text-brand-400" /> Visão Geral
-          </button>
-        </div>
-
-        <div className="p-4 m-4 bg-slate-800/50 rounded-2xl border border-slate-800">
-          <div className="flex items-center gap-3 mb-4">
-             <img src={user.avatarUrl} className="w-10 h-10 rounded-full border border-slate-600" alt="avatar"/>
-             <div className="overflow-hidden">
-               <p className="text-sm font-bold text-white truncate">{user.name}</p>
-               <p className="text-xs text-slate-500 truncate">{user.email}</p>
-             </div>
-          </div>
-          <button onClick={onLogout} className="w-full py-2 flex items-center justify-center gap-2 text-sm text-red-400 hover:bg-red-500/10 rounded-lg transition-all">
-            <LogOut size={16} /> Sair
-          </button>
-        </div>
-      </aside>
-
-      <main className="flex-1 flex flex-col min-w-0 overflow-hidden bg-slate-950 relative">
-        <div className="absolute top-0 left-0 w-full h-96 bg-brand-900/10 blur-[100px] pointer-events-none"></div>
-
-        <header className="md:hidden bg-slate-900/80 backdrop-blur-md border-b border-slate-800 text-white p-4 flex justify-between items-center sticky top-0 z-20">
-          <span className="font-bold text-xl">WebNova</span>
-          <button onClick={onLogout}><LogOut size={20} /></button>
-        </header>
-
-        <div className="flex-1 overflow-auto p-6 md:p-10 relative z-10">
-           {children}
-        </div>
-      </main>
-    </div>
-  );
-};
-
-const DashboardHome = ({ user }: { user: User }) => {
-  const currentPlanDetails = PLANS.find(p => p.id === user.plan);
-  const planPrice = currentPlanDetails?.price || 0;
-  const calculatedSupportPrice = planPrice * VIP_SUPPORT_MULTIPLIER;
-  const hasHostingOrDomain = user.hosting?.active || user.domain?.active;
-
-  return (
-    <div className="space-y-8 max-w-6xl mx-auto">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-           <h1 className="text-3xl font-bold text-white mb-1">Olá, {user.name.split(' ')[0]} 👋</h1>
-           <p className="text-slate-400">Confira a situação dos seus serviços contratados.</p>
-        </div>
-        <div className="inline-flex items-center px-4 py-2 bg-green-500/10 border border-green-500/20 text-green-400 rounded-full text-sm font-bold">
-           <span className="w-2 h-2 bg-green-500 rounded-full mr-2 shadow-[0_0_10px_rgba(34,197,94,0.5)]"></span>
-           Status: Site Ativo
-        </div>
-      </div>
-
-      {/* STATS GRID: Plano, Suporte, Hospedagem, Domínio */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-         {/* PLANO */}
-         <div className="bg-slate-900 p-6 rounded-2xl shadow-lg border border-slate-800 hover:border-slate-700 transition-colors">
-            <div className="flex justify-between items-start mb-4">
-               <div className="p-2 bg-blue-500/10 rounded-lg text-blue-400">
-                  <ShieldCheck size={24} />
-               </div>
-            </div>
-            <div className="text-slate-400 text-sm font-medium mb-1">Plano Atual</div>
-            <div className="text-xl font-bold text-white truncate">{currentPlanDetails?.title || 'Admin'}</div>
-            <div className="mt-4 text-xs text-slate-500">Expira em: {new Date(user.planExpiry || '').toLocaleDateString('pt-BR')}</div>
-         </div>
-
-         {/* SUPORTE */}
-         <div className="bg-slate-900 p-6 rounded-2xl shadow-lg border border-slate-800 hover:border-slate-700 transition-colors">
-            <div className="flex justify-between items-start mb-4">
-               <div className="p-2 bg-purple-500/10 rounded-lg text-purple-400">
-                  <MessageSquare size={24} />
-               </div>
-            </div>
-            <div className="text-slate-400 text-sm font-medium mb-1">Suportes Restantes</div>
-            <div className="text-2xl font-bold text-white">
-                {user.supportTicketsRemaining === 'unlimited' ? 'Ilimitado' : user.supportTicketsRemaining}
-            </div>
-            <div className="mt-4 text-xs font-bold">
-                {user.vipSupport?.active ? <span className="text-green-400">VIP Ativado</span> : <span className="text-slate-500">Padrão</span>}
-            </div>
-         </div>
-
-         {/* HOSPEDAGEM */}
-         <div className="bg-slate-900 p-6 rounded-2xl shadow-lg border border-slate-800 hover:border-slate-700 transition-colors">
-            <div className="flex justify-between items-start mb-4">
-               <div className="p-2 bg-amber-500/10 rounded-lg text-amber-400">
-                  <Server size={24} />
-               </div>
-               {user.hosting?.active && <span className="text-green-400 text-xs font-bold bg-green-500/10 px-2 py-1 rounded">Ativo</span>}
-            </div>
-            <div className="text-slate-400 text-sm font-medium mb-1">Hospedagem</div>
-            <div className="text-xl font-bold text-white">
-                {user.hosting?.active ? `${user.hosting.planYears} Ano(s)` : 'Não contratado'}
-            </div>
-            {user.hosting?.active && (
-                <div className="mt-4 text-xs text-slate-500">Renova em: {new Date(user.hosting.expiryDate || '').toLocaleDateString('pt-BR')}</div>
-            )}
-         </div>
-
-         {/* DOMÍNIO */}
-         <div className="bg-slate-900 p-6 rounded-2xl shadow-lg border border-slate-800 hover:border-slate-700 transition-colors">
-            <div className="flex justify-between items-start mb-4">
-               <div className="p-2 bg-pink-500/10 rounded-lg text-pink-400">
-                  <Globe size={24} />
-               </div>
-               {user.domain?.active && <span className="text-green-400 text-xs font-bold bg-green-500/10 px-2 py-1 rounded">Ativo</span>}
-            </div>
-            <div className="text-slate-400 text-sm font-medium mb-1">Domínio</div>
-            <div className="text-xl font-bold text-white truncate">
-                {user.domain?.active ? (user.domain.domainName || 'Seu Domínio') : 'Não contratado'}
-            </div>
-            {user.domain?.active && (
-                <div className="mt-4 text-xs text-slate-500">Expira em: {new Date(user.domain.expiryDate || '').toLocaleDateString('pt-BR')}</div>
-            )}
-         </div>
-      </div>
-
-      <h2 className="text-2xl font-bold text-white mt-8 mb-4">Contratação de Serviços Adicionais</h2>
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-         
-         {/* CARD HOSPEDAGEM */}
-         <div className="bg-slate-800/50 border border-slate-700 rounded-2xl p-6 flex flex-col">
-            <div className="flex items-center gap-3 mb-4">
-                <div className="p-3 rounded-full bg-amber-500/10 text-amber-500"><Server size={24}/></div>
-                <h3 className="font-bold text-lg text-white">Hospedagem Premium</h3>
-            </div>
-            <p className="text-sm text-slate-400 mb-6">Servidor de alta performance, SSL incluso e contas de e-mail.</p>
-            
-            <div className="space-y-3 mt-auto">
-                {HOSTING_PRICES.map((opt) => (
-                    <button key={opt.years} className="w-full flex justify-between items-center p-3 rounded-xl border border-slate-700 hover:border-amber-500 hover:bg-amber-500/5 transition-all group">
-                        <span className="text-sm font-medium text-slate-300 group-hover:text-white">{opt.label} (+{opt.supportsBonus} suportes)</span>
-                        <span className="font-bold text-white">R$ {opt.price.toFixed(2)}</span>
-                    </button>
-                ))}
-            </div>
-         </div>
-
-         {/* CARD DOMÍNIO */}
-         <div className="bg-slate-800/50 border border-slate-700 rounded-2xl p-6 flex flex-col">
-            <div className="flex items-center gap-3 mb-4">
-                <div className="p-3 rounded-full bg-pink-500/10 text-pink-500"><Globe size={24}/></div>
-                <h3 className="font-bold text-lg text-white">Domínio Personalizado</h3>
-            </div>
-            <p className="text-sm text-slate-400 mb-6">Registre sua marca na internet (.com.br ou .com).</p>
-            
-            <div className="space-y-3 mt-auto">
-                {DOMAIN_PRICES.map((opt) => (
-                    <button key={opt.years} className="w-full flex justify-between items-center p-3 rounded-xl border border-slate-700 hover:border-pink-500 hover:bg-pink-500/5 transition-all group">
-                        <span className="text-sm font-medium text-slate-300 group-hover:text-white">{opt.label} (+{opt.supportsBonus} suportes)</span>
-                        <span className="font-bold text-white">R$ {opt.price.toFixed(2)}</span>
-                    </button>
-                ))}
-            </div>
-         </div>
-
-         {/* CARD SUPORTE VIP (BLOQUEADO SE NÃO TIVER HOSPEDAGEM/DOMINIO) */}
-         <div className={`border rounded-2xl p-6 flex flex-col relative overflow-hidden ${!hasHostingOrDomain ? 'bg-slate-900 border-slate-800 opacity-75' : 'bg-slate-800/50 border-slate-700'}`}>
-            {!hasHostingOrDomain && (
-                <div className="absolute inset-0 bg-slate-950/60 backdrop-blur-[2px] flex flex-col items-center justify-center text-center p-4 z-20">
-                    <Lock size={32} className="text-slate-500 mb-2" />
-                    <p className="text-sm font-bold text-slate-400">Bloqueado</p>
-                    <p className="text-xs text-slate-500 mt-1">Contrate Hospedagem ou Domínio para liberar.</p>
-                </div>
-            )}
-            
-            <div className="flex items-center gap-3 mb-4">
-                <div className="p-3 rounded-full bg-purple-500/10 text-purple-500"><LifeBuoy size={24}/></div>
-                <h3 className="font-bold text-lg text-white">Suporte VIP Ilimitado</h3>
-            </div>
-            <p className="text-sm text-slate-400 mb-4">Atendimento prioritário para ajustes no seu site.</p>
-            
-            <div className="bg-purple-500/10 border border-purple-500/20 rounded-xl p-4 mb-6">
-                <p className="text-xs text-purple-300 mb-1">Preço Exclusivo (75% do plano):</p>
-                <div className="text-2xl font-bold text-white">R$ {calculatedSupportPrice.toFixed(2)}</div>
-                <p className="text-[10px] text-slate-500 mt-1">Validade igual ao menor período de hospedagem/domínio.</p>
-            </div>
-
-            <button 
-                disabled={!hasHostingOrDomain}
-                className="mt-auto w-full py-3 bg-purple-600 hover:bg-purple-500 text-white font-bold rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-            >
-                Contratar Agora
-            </button>
-         </div>
-
-      </div>
-
-      <div className="bg-slate-900/50 border border-slate-800 rounded-2xl p-6 flex items-center justify-between mt-8">
-         <div>
-            <h3 className="font-bold text-white mb-1">Precisa de ajuda?</h3>
-            <p className="text-sm text-slate-400">Nossa equipe está pronta para te atender.</p>
-         </div>
-         <a href={`https://wa.me/${CONTACT_WHATSAPP}`} target="_blank" rel="noreferrer" className="px-6 py-3 bg-green-600 hover:bg-green-500 text-white rounded-xl font-bold transition-all flex items-center gap-2">
-           <MessageSquare size={18} /> WhatsApp
-         </a>
-      </div>
-    </div>
-  );
-};
-
-// --- LANDING PAGE ---
+// --- MAIN LANDING PAGE ---
 
 const LandingPage = ({ onPlanSelect, onLoginClick }: { onPlanSelect: (plan: any) => void, onLoginClick: () => void }) => {
   
@@ -925,7 +637,7 @@ const LandingPage = ({ onPlanSelect, onLoginClick }: { onPlanSelect: (plan: any)
                 <h3 className="text-xl font-bold text-white mb-3">{plan.title}</h3>
                 <p className="text-sm text-slate-400 mb-8 min-h-[40px]">{plan.description}</p>
                 <div className="mb-8">
-                  <span className="text-4xl font-extrabold text-white">R$ {plan.price}</span>
+                  <span className="text-4xl font-extrabold text-white">R$ {plan.price.toFixed(2)}</span>
                   <span className="text-slate-500 font-medium">/único</span>
                 </div>
                 <ul className="space-y-4 mb-8">
@@ -1028,6 +740,24 @@ const LandingPage = ({ onPlanSelect, onLoginClick }: { onPlanSelect: (plan: any)
             <p className="text-slate-400 mb-8 max-w-sm leading-relaxed">
               Desenvolvemos soluções digitais de alto impacto para empresas que buscam liderança no mercado. Qualidade, rapidez e suporte premium.
             </p>
+            <div className="flex gap-4">
+              <a href="#" className="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center text-slate-400 hover:bg-brand-600 hover:text-white transition-all">
+                <span className="sr-only">Instagram</span>
+                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/></svg>
+              </a>
+              <a href="#" className="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center text-slate-400 hover:bg-brand-600 hover:text-white transition-all">
+                <span className="sr-only">Facebook</span>
+                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M9 8h-3v4h3v12h5v-12h3.642l.358-4h-4v-1.667c0-.955.192-1.333 1.115-1.333h2.885v-5h-3.808c-3.596 0-5.192 1.583-5.192 4.615v3.385z"/></svg>
+              </a>
+               <a href="#" className="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center text-slate-400 hover:bg-brand-600 hover:text-white transition-all">
+                <span className="sr-only">TikTok</span>
+                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M12.525.02c1.31-.02 2.61-.01 3.91-.02.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.05-2.89-.35-4.2-.97-.57-.26-1.1-.59-1.62-.93-.01 2.92.01 5.84-.02 8.75-.08 1.4-.54 2.79-1.35 3.94-1.31 1.92-3.58 3.17-5.91 3.21-1.43.08-2.86-.31-4.08-1.03-2.02-1.19-3.44-3.37-3.65-5.71-.02-.5-.03-1-.01-1.49.18-1.9 1.12-3.72 2.58-4.96 1.66-1.44 3.98-2.13 6.15-1.72.02 1.48-.04 2.96-.04 4.44-.99-.32-2.15-.23-3.02.37-.63.41-1.11 1.04-1.36 1.75-.21.51-.15 1.07-.14 1.61.24 1.64 1.82 3.02 3.5 2.87 1.12-.01 2.19-.66 2.77-1.61.19-.33.4-.67.41-1.06.1-1.79.06-3.57.07-5.36.01-4.03-.01-8.05.02-12.07z"/></svg>
+              </a>
+              <a href="#" className="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center text-slate-400 hover:bg-brand-600 hover:text-white transition-all">
+                <span className="sr-only">YouTube</span>
+                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M19.615 3.184c-3.604-.246-11.631-.245-15.23 0-3.897.266-4.356 2.62-4.385 8.816.029 6.185.484 8.549 4.385 8.816 3.6.245 11.626.246 15.23 0 3.897-.266 4.356-2.62 4.385-8.816-.029-6.185-.484-8.549-4.385-8.816zm-10.615 12.816v-8l8 3.993-8 4.007z"/></svg>
+              </a>
+            </div>
           </div>
           <div>
             <h4 className="font-bold text-white mb-6 text-lg">Empresa</h4>
@@ -1061,6 +791,343 @@ const LandingPage = ({ onPlanSelect, onLoginClick }: { onPlanSelect: (plan: any)
           © {new Date().getFullYear()} WebNova. Todos os direitos reservados.
         </div>
       </footer>
+    </div>
+  );
+};
+
+// --- AUTH COMPONENTS ---
+
+const LoginModal = ({ isOpen, onClose, onLogin }: any) => {
+  const [email, setEmail] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [sent, setSent] = useState(false);
+
+  if (!isOpen) return null;
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    
+    const { error } = await loginWithEmail(email);
+
+    if (error) {
+      alert("Erro ao enviar login: " + error.message);
+      setLoading(false);
+    } else {
+      setSent(true);
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/80 backdrop-blur-md" onClick={onClose}></div>
+      <div className="bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl w-full max-w-md p-8 relative z-10">
+        {sent ? (
+          <div className="text-center">
+            <div className="w-16 h-16 bg-green-500/10 rounded-full flex items-center justify-center text-green-500 mx-auto mb-4">
+               <Mail size={32} />
+            </div>
+            <h2 className="text-2xl font-bold mb-2 text-white">Verifique seu Email</h2>
+            <p className="text-slate-400 mb-6">Enviamos um link mágico de acesso para <strong>{email}</strong>.</p>
+            <button onClick={onClose} className="text-brand-400 font-bold hover:text-brand-300">Fechar</button>
+          </div>
+        ) : (
+          <>
+            <h2 className="text-2xl font-bold mb-6 text-white">Acesse sua Conta</h2>
+            <form onSubmit={handleSubmit} className="space-y-5">
+              <div>
+                <label className="block text-sm font-medium text-slate-400 mb-2">Email</label>
+                <input 
+                  type="email" 
+                  required
+                  className="w-full px-4 py-3 bg-slate-800 text-white rounded-lg border border-slate-700 focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none transition-all placeholder-slate-500"
+                  placeholder="seu@email.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                />
+                <p className="text-xs text-slate-500 mt-2">
+                  Enviaremos um link de acesso para o seu email. Não precisa de senha.
+                </p>
+              </div>
+              <button 
+                type="submit" 
+                disabled={loading}
+                className="w-full py-3 bg-brand-600 text-white rounded-lg font-bold hover:bg-brand-500 transition-colors disabled:opacity-50 shadow-lg shadow-brand-900/20 flex items-center justify-center gap-2"
+              >
+                {loading ? <Loader2 className="animate-spin" /> : 'Entrar na Plataforma'}
+              </button>
+            </form>
+          </>
+        )}
+      </div>
+    </div>
+  );
+};
+
+// --- DASHBOARD COMPONENTS ---
+
+const DashboardLayout = ({ user, children, onLogout }: any) => {
+  return (
+    <div className="min-h-screen bg-slate-950 flex">
+      <aside className="w-72 bg-slate-900 border-r border-slate-800 text-slate-300 flex-shrink-0 hidden md:flex flex-col">
+        <div className="p-8 border-b border-slate-800">
+           <div className="flex items-center gap-3">
+              <div className="w-8 h-8 bg-brand-600 rounded-lg flex items-center justify-center text-white font-bold">W</div>
+              <div className="font-bold text-2xl text-white">WebNova</div>
+           </div>
+           <div className="text-xs text-brand-400 font-medium mt-2 pl-11">Painel do Cliente</div>
+        </div>
+        
+        <div className="flex-grow p-4 space-y-2">
+          <button className="w-full flex items-center gap-3 px-4 py-3 text-white bg-brand-600/10 border border-brand-500/20 rounded-xl hover:bg-brand-600/20 transition-all">
+            <Layout size={20} className="text-brand-400" /> Visão Geral
+          </button>
+        </div>
+
+        <div className="p-4 m-4 bg-slate-800/50 rounded-2xl border border-slate-800">
+          <div className="flex items-center gap-3 mb-4">
+             <img src={user.avatarUrl} className="w-10 h-10 rounded-full border border-slate-600" alt="avatar"/>
+             <div className="overflow-hidden">
+               <p className="text-sm font-bold text-white truncate">{user.name}</p>
+               <p className="text-xs text-slate-500 truncate">{user.email}</p>
+             </div>
+          </div>
+          <button onClick={onLogout} className="w-full py-2 flex items-center justify-center gap-2 text-sm text-red-400 hover:bg-red-500/10 rounded-lg transition-all">
+            <LogOut size={16} /> Sair
+          </button>
+        </div>
+      </aside>
+
+      <main className="flex-1 flex flex-col min-w-0 overflow-hidden bg-slate-950 relative">
+        <div className="absolute top-0 left-0 w-full h-96 bg-brand-900/10 blur-[100px] pointer-events-none"></div>
+
+        <header className="md:hidden bg-slate-900/80 backdrop-blur-md border-b border-slate-800 text-white p-4 flex justify-between items-center sticky top-0 z-20">
+          <span className="font-bold text-xl">WebNova</span>
+          <button onClick={onLogout}><LogOut size={20} /></button>
+        </header>
+
+        <div className="flex-1 overflow-auto p-6 md:p-10 relative z-10">
+           {children}
+        </div>
+      </main>
+    </div>
+  );
+};
+
+const DashboardHome = ({ user }: { user: User }) => {
+  const currentPlanDetails = PLANS.find(p => p.id === user.plan);
+  const planPrice = currentPlanDetails?.price || 0;
+  const calculatedSupportPrice = planPrice * VIP_SUPPORT_MULTIPLIER;
+  const hasHostingOrDomain = user.hosting?.active || user.domain?.active;
+  const [loadingButton, setLoadingButton] = useState<string | null>(null);
+
+  const handleServicePurchase = async (serviceType: 'hosting' | 'domain' | 'support', years: number = 1, price: number, label: string) => {
+    const buttonId = `${serviceType}-${years}`;
+    setLoadingButton(buttonId);
+
+    try {
+        const response = await fetch('/api/checkout', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                isAddon: true, // Flag importante
+                addonId: serviceType,
+                addonTitle: serviceType === 'support' 
+                    ? `Suporte VIP Ilimitado (Vinculado)` 
+                    : `${serviceType === 'hosting' ? 'Hospedagem' : 'Domínio'} - ${label}`,
+                addonPrice: price,
+                email: user.email,
+            }),
+        });
+
+        if (response.ok) {
+            const data = await response.json();
+            window.location.href = data.url;
+        } else {
+            const error = await response.json();
+            alert(`Erro ao gerar pagamento: ${error.details || error.error}`);
+        }
+    } catch (err) {
+        alert('Erro de conexão. Tente novamente.');
+    } finally {
+        setLoadingButton(null);
+    }
+  };
+
+  return (
+    <div className="space-y-8 max-w-6xl mx-auto">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+           <h1 className="text-3xl font-bold text-white mb-1">Olá, {user.name.split(' ')[0]} 👋</h1>
+           <p className="text-slate-400">Confira a situação dos seus serviços contratados.</p>
+        </div>
+        <div className="inline-flex items-center px-4 py-2 bg-green-500/10 border border-green-500/20 text-green-400 rounded-full text-sm font-bold">
+           <span className="w-2 h-2 bg-green-500 rounded-full mr-2 shadow-[0_0_10px_rgba(34,197,94,0.5)]"></span>
+           Status: Site Ativo
+        </div>
+      </div>
+
+      {/* STATS GRID: Plano, Suporte, Hospedagem, Domínio */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+         {/* PLANO */}
+         <div className="bg-slate-900 p-6 rounded-2xl shadow-lg border border-slate-800 hover:border-slate-700 transition-colors">
+            <div className="flex justify-between items-start mb-4">
+               <div className="p-2 bg-blue-500/10 rounded-lg text-blue-400">
+                  <ShieldCheck size={24} />
+               </div>
+            </div>
+            <div className="text-slate-400 text-sm font-medium mb-1">Plano Atual</div>
+            <div className="text-xl font-bold text-white truncate">{currentPlanDetails?.title || 'Admin'}</div>
+            <div className="mt-4 text-xs text-slate-500">Expira em: {new Date(user.planExpiry || '').toLocaleDateString('pt-BR')}</div>
+         </div>
+
+         {/* SUPORTE */}
+         <div className="bg-slate-900 p-6 rounded-2xl shadow-lg border border-slate-800 hover:border-slate-700 transition-colors">
+            <div className="flex justify-between items-start mb-4">
+               <div className="p-2 bg-purple-500/10 rounded-lg text-purple-400">
+                  <MessageSquare size={24} />
+               </div>
+            </div>
+            <div className="text-slate-400 text-sm font-medium mb-1">Suportes Restantes</div>
+            <div className="text-2xl font-bold text-white">
+                {user.supportTicketsRemaining === 'unlimited' ? 'Ilimitado' : user.supportTicketsRemaining}
+            </div>
+            <div className="mt-4 text-xs font-bold">
+                {user.vipSupport?.active ? <span className="text-green-400">VIP Ativado</span> : <span className="text-slate-500">Padrão</span>}
+            </div>
+         </div>
+
+         {/* HOSPEDAGEM */}
+         <div className="bg-slate-900 p-6 rounded-2xl shadow-lg border border-slate-800 hover:border-slate-700 transition-colors">
+            <div className="flex justify-between items-start mb-4">
+               <div className="p-2 bg-amber-500/10 rounded-lg text-amber-400">
+                  <Server size={24} />
+               </div>
+               {user.hosting?.active && <span className="text-green-400 text-xs font-bold bg-green-500/10 px-2 py-1 rounded">Ativo</span>}
+            </div>
+            <div className="text-slate-400 text-sm font-medium mb-1">Hospedagem</div>
+            <div className="text-xl font-bold text-white">
+                {user.hosting?.active ? `${user.hosting.planYears} Ano(s)` : 'Não contratado'}
+            </div>
+            {user.hosting?.active && (
+                <div className="mt-4 text-xs text-slate-500">Renova em: {new Date(user.hosting.expiryDate || '').toLocaleDateString('pt-BR')}</div>
+            )}
+         </div>
+
+         {/* DOMÍNIO */}
+         <div className="bg-slate-900 p-6 rounded-2xl shadow-lg border border-slate-800 hover:border-slate-700 transition-colors">
+            <div className="flex justify-between items-start mb-4">
+               <div className="p-2 bg-pink-500/10 rounded-lg text-pink-400">
+                  <Globe size={24} />
+               </div>
+               {user.domain?.active && <span className="text-green-400 text-xs font-bold bg-green-500/10 px-2 py-1 rounded">Ativo</span>}
+            </div>
+            <div className="text-slate-400 text-sm font-medium mb-1">Domínio</div>
+            <div className="text-xl font-bold text-white truncate">
+                {user.domain?.active ? (user.domain.domainName || 'Seu Domínio') : 'Não contratado'}
+            </div>
+            {user.domain?.active && (
+                <div className="mt-4 text-xs text-slate-500">Expira em: {new Date(user.domain.expiryDate || '').toLocaleDateString('pt-BR')}</div>
+            )}
+         </div>
+      </div>
+
+      <h2 className="text-2xl font-bold text-white mt-8 mb-4">Contratação de Serviços Adicionais</h2>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+         
+         {/* CARD HOSPEDAGEM */}
+         <div className="bg-slate-800/50 border border-slate-700 rounded-2xl p-6 flex flex-col">
+            <div className="flex items-center gap-3 mb-4">
+                <div className="p-3 rounded-full bg-amber-500/10 text-amber-500"><Server size={24}/></div>
+                <h3 className="font-bold text-lg text-white">Hospedagem Premium</h3>
+            </div>
+            <p className="text-sm text-slate-400 mb-6">Servidor de alta performance, SSL incluso e contas de e-mail.</p>
+            
+            <div className="space-y-3 mt-auto">
+                {HOSTING_PRICES.map((opt) => (
+                    <button 
+                        key={opt.years} 
+                        onClick={() => handleServicePurchase('hosting', opt.years, opt.price, opt.label)}
+                        disabled={!!loadingButton}
+                        className="w-full flex justify-between items-center p-3 rounded-xl border border-slate-700 hover:border-amber-500 hover:bg-amber-500/5 transition-all group disabled:opacity-50"
+                    >
+                        <span className="text-sm font-medium text-slate-300 group-hover:text-white">{opt.label} (+{opt.supportsBonus} suportes)</span>
+                        <span className="font-bold text-white">
+                            {loadingButton === `hosting-${opt.years}` ? <Loader2 className="animate-spin h-4 w-4" /> : `R$ ${opt.price.toFixed(2)}`}
+                        </span>
+                    </button>
+                ))}
+            </div>
+         </div>
+
+         {/* CARD DOMÍNIO */}
+         <div className="bg-slate-800/50 border border-slate-700 rounded-2xl p-6 flex flex-col">
+            <div className="flex items-center gap-3 mb-4">
+                <div className="p-3 rounded-full bg-pink-500/10 text-pink-500"><Globe size={24}/></div>
+                <h3 className="font-bold text-lg text-white">Domínio Personalizado</h3>
+            </div>
+            <p className="text-sm text-slate-400 mb-6">Registre sua marca na internet (.com.br ou .com).</p>
+            
+            <div className="space-y-3 mt-auto">
+                {DOMAIN_PRICES.map((opt) => (
+                    <button 
+                        key={opt.years} 
+                        onClick={() => handleServicePurchase('domain', opt.years, opt.price, opt.label)}
+                        disabled={!!loadingButton}
+                        className="w-full flex justify-between items-center p-3 rounded-xl border border-slate-700 hover:border-pink-500 hover:bg-pink-500/5 transition-all group disabled:opacity-50"
+                    >
+                        <span className="text-sm font-medium text-slate-300 group-hover:text-white">{opt.label} (+{opt.supportsBonus} suportes)</span>
+                        <span className="font-bold text-white">
+                            {loadingButton === `domain-${opt.years}` ? <Loader2 className="animate-spin h-4 w-4" /> : `R$ ${opt.price.toFixed(2)}`}
+                        </span>
+                    </button>
+                ))}
+            </div>
+         </div>
+
+         {/* CARD SUPORTE VIP (BLOQUEADO SE NÃO TIVER HOSPEDAGEM/DOMINIO) */}
+         <div className={`border rounded-2xl p-6 flex flex-col relative overflow-hidden ${!hasHostingOrDomain ? 'bg-slate-900 border-slate-800 opacity-75' : 'bg-slate-800/50 border-slate-700'}`}>
+            {!hasHostingOrDomain && (
+                <div className="absolute inset-0 bg-slate-950/60 backdrop-blur-[2px] flex flex-col items-center justify-center text-center p-4 z-20">
+                    <Lock size={32} className="text-slate-500 mb-2" />
+                    <p className="text-sm font-bold text-slate-400">Bloqueado</p>
+                    <p className="text-xs text-slate-500 mt-1">Contrate Hospedagem ou Domínio para liberar.</p>
+                </div>
+            )}
+            
+            <div className="flex items-center gap-3 mb-4">
+                <div className="p-3 rounded-full bg-purple-500/10 text-purple-500"><LifeBuoy size={24}/></div>
+                <h3 className="font-bold text-lg text-white">Suporte VIP Ilimitado</h3>
+            </div>
+            <p className="text-sm text-slate-400 mb-4">Atendimento prioritário para ajustes no seu site.</p>
+            
+            <div className="bg-purple-500/10 border border-purple-500/20 rounded-xl p-4 mb-6">
+                <p className="text-xs text-purple-300 mb-1">Preço Exclusivo (75% do plano):</p>
+                <div className="text-2xl font-bold text-white">R$ {calculatedSupportPrice.toFixed(2)}</div>
+                <p className="text-[10px] text-slate-500 mt-1">Validade igual ao menor período de hospedagem/domínio.</p>
+            </div>
+
+            <button 
+                disabled={!hasHostingOrDomain || !!loadingButton}
+                onClick={() => handleServicePurchase('support', 1, calculatedSupportPrice, 'VIP')}
+                className="mt-auto w-full py-3 bg-purple-600 hover:bg-purple-500 text-white font-bold rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            >
+                {loadingButton === 'support-1' ? <Loader2 className="animate-spin h-5 w-5" /> : 'Contratar Agora'}
+            </button>
+         </div>
+
+      </div>
+
+      <div className="bg-slate-900/50 border border-slate-800 rounded-2xl p-6 flex items-center justify-between mt-8">
+         <div>
+            <h3 className="font-bold text-white mb-1">Precisa de ajuda?</h3>
+            <p className="text-sm text-slate-400">Nossa equipe está pronta para te atender.</p>
+         </div>
+         <a href={`https://wa.me/${CONTACT_WHATSAPP}`} target="_blank" rel="noreferrer" className="px-6 py-3 bg-green-600 hover:bg-green-500 text-white rounded-xl font-bold transition-all flex items-center gap-2">
+           <MessageSquare size={18} /> WhatsApp
+         </a>
+      </div>
     </div>
   );
 };
