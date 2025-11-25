@@ -14,20 +14,30 @@ const mapProfileToUser = (profile: any, authId: string, email: string): User => 
 };
 
 export const loginWithEmail = async (email: string) => {
-  // Define a URL de redirecionamento com base na origem atual do navegador
-  // Isso garante que funcione tanto em localhost quanto em produção
-  const redirectTo = typeof window !== 'undefined' 
-    ? `${window.location.origin}` 
-    : 'http://localhost:3000';
+  // Lógica de Redirecionamento Inteligente:
+  // 1. Tenta usar a URL configurada na Vercel (NEXT_PUBLIC_BASE_URL)
+  // 2. Se não existir, tenta pegar a origem do navegador (window.location.origin)
+  // 3. Fallback final para localhost:3000
+  
+  let redirectTo = 'http://localhost:3000';
+
+  if (process.env.NEXT_PUBLIC_BASE_URL) {
+    redirectTo = process.env.NEXT_PUBLIC_BASE_URL;
+  } else if (typeof window !== 'undefined') {
+    redirectTo = window.location.origin;
+  }
+
+  // Remove barra final se existir para evitar URLs duplas (ex: .com//)
+  redirectTo = redirectTo.replace(/\/$/, '');
 
   // Login via Magic Link (Email sem senha)
   const { data, error } = await supabase.auth.signInWithOtp({
     email,
     options: {
-      emailRedirectTo: redirectTo, // Correção: Redireciona explicitamente para a Home/Dashboard
-      shouldCreateUser: true, // Cria o usuário se não existir
+      emailRedirectTo: redirectTo, // URL correta para onde o usuário volta
+      shouldCreateUser: true,
       data: {
-        full_name: email.split('@')[0], // Nome provisório baseado no email
+        full_name: email.split('@')[0],
         avatar_url: '',
       }
     }
@@ -50,7 +60,7 @@ export const getCurrentUser = async (): Promise<User | null> => {
 
   if (error || !profile) {
     console.error('Erro ao buscar perfil:', error);
-    // Se tiver sessão mas não tiver perfil (erro raro), retorna null ou usuário básico
+    // Se tiver sessão mas não tiver perfil (erro raro), retorna null
     return null;
   }
 
