@@ -381,6 +381,7 @@ const PaymentModal = ({ plan, isOpen, onClose }: { plan: any, isOpen: boolean, o
                 price: plan.price,
                 includeHosting: includeHosting,
                 includeSupport: includeSupport, // Novo campo
+                includeSupportPrice: includeSupport ? supportPrice : 0, // Envia o preço calculado
                 email: emailToUse
             }),
         });
@@ -390,12 +391,14 @@ const PaymentModal = ({ plan, isOpen, onClose }: { plan: any, isOpen: boolean, o
             window.location.href = data.url; 
         } else {
             const errorData = await response.json();
-            console.error("Erro API:", errorData);
-            throw new Error("Falha na comunicação com Mercado Pago");
+            // Aqui: Pega a mensagem detalhada enviada pelo servidor
+            const errorMessage = errorData.details || errorData.error || "Erro desconhecido";
+            alert(`Erro no Checkout: ${errorMessage}`);
+            setLoading(false);
         }
     } catch (error) {
         console.error("Erro no pagamento:", error);
-        alert("Ocorreu um erro ao conectar com o Mercado Pago. Verifique o console ou tente novamente.");
+        alert("Erro de conexão. Verifique se o servidor está rodando.");
         setLoading(false);
     }
   };
@@ -413,7 +416,7 @@ const PaymentModal = ({ plan, isOpen, onClose }: { plan: any, isOpen: boolean, o
           {/* Valor Base */}
           <div className="flex justify-between items-center mb-6 text-lg">
             <span className="text-slate-400">Criação do Site:</span>
-            <span className="font-bold text-2xl text-white">R$ {plan.price}</span>
+            <span className="font-bold text-2xl text-white">R$ {plan.price.toFixed(2)}</span>
           </div>
 
           {/* UPSELL 1: HOSPEDAGEM */}
@@ -428,7 +431,7 @@ const PaymentModal = ({ plan, isOpen, onClose }: { plan: any, isOpen: boolean, o
                <div>
                    <h4 className={`font-bold text-lg ${includeHosting ? 'text-amber-400' : 'text-white'}`}>Hospedagem Premium</h4>
                    <p className="text-sm text-slate-400 mt-1">Domínio .com.br Grátis + SSL + Emails.</p>
-                   <div className="mt-2 font-bold text-white">+ R$ {UPSALE_PRICE},00 <span className="text-xs font-normal text-slate-500">/ano</span></div>
+                   <div className="mt-2 font-bold text-white">+ R$ {UPSALE_PRICE.toFixed(2)} <span className="text-xs font-normal text-slate-500">/ano</span></div>
                </div>
             </div>
           </div>
@@ -445,7 +448,7 @@ const PaymentModal = ({ plan, isOpen, onClose }: { plan: any, isOpen: boolean, o
                <div>
                    <h4 className={`font-bold text-lg ${includeSupport ? 'text-purple-400' : 'text-white'}`}>Suporte VIP Ilimitado</h4>
                    <p className="text-sm text-slate-400 mt-1">Atendimento prioritário e ajustes ilimitados.</p>
-                   <div className="mt-2 font-bold text-white">+ R$ {supportPrice},00 <span className="text-xs font-normal text-slate-500">/semestre</span></div>
+                   <div className="mt-2 font-bold text-white">+ R$ {supportPrice.toFixed(2)} <span className="text-xs font-normal text-slate-500">/semestre</span></div>
                </div>
             </div>
           </div>
@@ -453,7 +456,7 @@ const PaymentModal = ({ plan, isOpen, onClose }: { plan: any, isOpen: boolean, o
           <div className="border-t border-slate-700 pt-6 mb-6">
              <div className="flex justify-between items-center">
                 <span className="text-lg text-slate-300">Total a Pagar:</span>
-                <span className="text-3xl font-extrabold text-white">R$ {total}</span>
+                <span className="text-3xl font-extrabold text-white">R$ {total.toFixed(2)}</span>
              </div>
           </div>
 
@@ -475,6 +478,294 @@ const PaymentModal = ({ plan, isOpen, onClose }: { plan: any, isOpen: boolean, o
           </div>
         </div>
       </div>
+    </div>
+  );
+};
+
+const LandingPage = ({ onPlanSelect, onLoginClick }: { onPlanSelect: (plan: any) => void, onLoginClick: () => void }) => {
+  
+  const scrollTo = (id: string) => {
+    const el = document.getElementById(id);
+    if (el) el.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  // Testimonials Logic
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [itemsToShow, setItemsToShow] = useState(3);
+
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth < 768) setItemsToShow(1);
+      else if (window.innerWidth < 1024) setItemsToShow(2);
+      else setItemsToShow(3);
+    };
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      nextTestimonial();
+    }, 5000);
+    return () => clearInterval(timer);
+  }, [currentIndex, itemsToShow]);
+
+  const nextTestimonial = () => {
+    setCurrentIndex((prev) => (prev + 1) % (TESTIMONIALS.length - itemsToShow + 1));
+  };
+
+  const prevTestimonial = () => {
+     setCurrentIndex((prev) => (prev === 0 ? TESTIMONIALS.length - itemsToShow : prev - 1));
+  };
+
+  return (
+    <div className="min-h-screen flex flex-col bg-dark-950 text-slate-50">
+      <Navbar onLoginClick={onLoginClick} onScrollTo={scrollTo} />
+      
+      <Hero onCtaClick={() => scrollTo('planos')} />
+
+      <Section id="quem-somos" title="Quem Somos" subtitle="Especialistas em criar experiências digitais que impulsionam negócios." bg="dark">
+        <div className="grid md:grid-cols-2 gap-16 items-center">
+          <div className="order-2 md:order-1 space-y-8 text-slate-300 text-lg leading-relaxed">
+            <p>
+              Somos mais que uma agência de desenvolvimento. Somos parceiros do seu crescimento. 
+              Nossa equipe multidisciplinar une <strong className="text-white">Design, Tecnologia e Marketing</strong> para entregar não apenas um site, 
+              mas uma ferramenta poderosa de vendas.
+            </p>
+            <ul className="space-y-5">
+              {[
+                "Equipe de desenvolvedores sênior",
+                "Especialistas em UI/UX Design",
+                "Suporte Humanizado VIP",
+                "Foco total em performance e SEO"
+              ].map((item, idx) => (
+                <li key={idx} className="flex items-center gap-4 group">
+                  <div className="bg-green-500/10 p-2 rounded-lg group-hover:bg-green-500/20 transition-colors">
+                     <CheckCircle className="text-green-500 flex-shrink-0" size={20} />
+                  </div>
+                  <span className="group-hover:text-white transition-colors">{item}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+          <div className="order-1 md:order-2 relative">
+            <div className="absolute -inset-4 bg-brand-500/20 rounded-2xl blur-2xl"></div>
+            <img 
+              src="https://picsum.photos/800/600?office" 
+              alt="Team working" 
+              className="relative rounded-2xl shadow-2xl border border-white/10 grayscale hover:grayscale-0 transition-all duration-700"
+            />
+          </div>
+        </div>
+      </Section>
+
+      <Section id="vantagens" title="Por que escolher a WebNova?" bg="darker">
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+          <FeatureCard 
+            icon={Code} 
+            title="Código Personalizado" 
+            desc="Nada de templates prontos. Desenvolvemos seu site linha a linha para máxima performance, segurança e exclusividade." 
+          />
+          <FeatureCard 
+            icon={Smartphone} 
+            title="Totalmente Responsivo" 
+            desc="Seu site perfeito em qualquer tela. Mobile-first design garantindo a melhor experiência em celulares e tablets." 
+          />
+          <FeatureCard 
+            icon={Rocket} 
+            title="Alta Performance" 
+            desc="Sites otimizados para o Google, carregamento ultrarrápido (Vercel) e melhores pontuações no Core Web Vitals." 
+          />
+          <FeatureCard 
+            icon={Palette} 
+            title="Design Exclusivo" 
+            desc="Nossa equipe de UI/UX cria uma identidade visual única, alinhada com a psicologia das cores da sua marca." 
+          />
+          <FeatureCard 
+            icon={Search} 
+            title="SEO Otimizado" 
+            desc="Estrutura de código preparada para que seu site seja encontrado facilmente pelos mecanismos de busca como o Google." 
+          />
+          <FeatureCard 
+            icon={Headphones} 
+            title="Suporte Humanizado" 
+            desc="Sem robôs. Fale diretamente com nossa equipe técnica via WhatsApp para resolver qualquer questão rapidamente." 
+          />
+        </div>
+      </Section>
+
+      <Section id="como-trabalhamos" title="Como Trabalhamos" subtitle="Processo transparente e ágil para colocar sua empresa no topo." bg="dark">
+         <Timeline />
+      </Section>
+
+      <Section id="planos" title="Nossos Planos" subtitle="Investimento transparente. Escolha a solução ideal para o seu momento." bg="darker">
+        <div className="grid md:grid-cols-2 xl:grid-cols-4 gap-8">
+          {PLANS.map((plan) => (
+            <div key={plan.id} className={`relative bg-slate-900 rounded-3xl flex flex-col border transition-all duration-300 hover:shadow-2xl hover:-translate-y-2 ${plan.recommended ? 'border-brand-500 shadow-brand-500/20 scale-105 z-10' : 'border-slate-800 hover:border-slate-700'}`}>
+              {plan.recommended && (
+                <div className="absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-brand-500 text-white px-6 py-2 rounded-full text-sm font-bold shadow-lg shadow-brand-500/40">
+                  Mais Popular
+                </div>
+              )}
+              <div className="p-8 flex-grow">
+                <h3 className="text-xl font-bold text-white mb-3">{plan.title}</h3>
+                <p className="text-sm text-slate-400 mb-8 min-h-[40px]">{plan.description}</p>
+                <div className="mb-8">
+                  <span className="text-4xl font-extrabold text-white">R$ {plan.price.toFixed(2)}</span>
+                  <span className="text-slate-500 font-medium">/único</span>
+                </div>
+                <ul className="space-y-4 mb-8">
+                  {plan.features.map((feature, idx) => (
+                    <li key={idx} className="flex items-start gap-3 text-sm text-slate-300">
+                      <CheckCircle size={16} className="text-brand-400 flex-shrink-0 mt-0.5" />
+                      {feature}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              <div className="p-8 pt-0 mt-auto">
+                <button 
+                  onClick={() => onPlanSelect(plan)}
+                  className={`w-full py-4 rounded-xl font-bold transition-all shadow-lg flex items-center justify-center gap-2 ${
+                    plan.recommended 
+                      ? 'bg-brand-600 text-white hover:bg-brand-500 shadow-brand-500/30' 
+                      : 'bg-slate-800 text-white hover:bg-slate-700 border border-slate-700'
+                  }`}
+                >
+                  Contratar Agora <ArrowRight size={16} />
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </Section>
+
+      <Section id="depoimentos" title="O que dizem nossos clientes" bg="dark">
+        <div className="max-w-7xl mx-auto relative px-4 sm:px-10">
+          
+          <button onClick={prevTestimonial} className="absolute left-0 top-1/2 -translate-y-1/2 z-20 p-2 bg-slate-800 rounded-full text-white hover:bg-brand-600 transition-colors shadow-lg border border-slate-700">
+            <ChevronLeft size={24} />
+          </button>
+          
+          <div className="overflow-hidden">
+            <div 
+              className="flex transition-transform duration-500 ease-in-out"
+              style={{ transform: `translateX(-${currentIndex * (100 / itemsToShow)}%)` }}
+            >
+              {TESTIMONIALS.map((testimonial) => (
+                <div 
+                  key={testimonial.id}
+                  className="flex-shrink-0 px-4"
+                  style={{ width: `${100 / itemsToShow}%` }}
+                >
+                  <div className="bg-slate-800/50 border border-white/5 p-8 rounded-3xl h-full flex flex-col backdrop-blur-sm hover:border-brand-500/20 transition-all">
+                    <div className="flex mb-4">
+                      {[...Array(5)].map((_, i) => (
+                        <Star key={i} size={18} className="text-amber-400 fill-current" />
+                      ))}
+                    </div>
+                    <p className="text-slate-300 italic mb-6 flex-grow leading-relaxed">"{testimonial.content}"</p>
+                    <div className="flex items-center gap-4 mt-auto">
+                      <img src={testimonial.avatar} alt={testimonial.name} className="w-12 h-12 rounded-full border-2 border-brand-500/50" />
+                      <div>
+                        <h5 className="font-bold text-white text-sm">{testimonial.name}</h5>
+                        <p className="text-xs text-brand-400 uppercase font-medium">{testimonial.role}</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <button onClick={nextTestimonial} className="absolute right-0 top-1/2 -translate-y-1/2 z-20 p-2 bg-slate-800 rounded-full text-white hover:bg-brand-600 transition-colors shadow-lg border border-slate-700">
+            <ChevronRight size={24} />
+          </button>
+
+          <div className="flex justify-center gap-2 mt-8">
+             {Array.from({ length: TESTIMONIALS.length - itemsToShow + 1 }).map((_, idx) => (
+               <button 
+                  key={idx}
+                  onClick={() => setCurrentIndex(idx)}
+                  className={`h-1.5 rounded-full transition-all duration-300 ${idx === currentIndex ? 'w-8 bg-brand-500' : 'w-2 bg-slate-700'}`}
+               />
+             ))}
+          </div>
+        </div>
+      </Section>
+
+      <section className="py-24 bg-dark-950 relative">
+         <div className="max-w-7xl mx-auto px-4">
+             <div className="text-center mb-12">
+               <h2 className="text-3xl md:text-5xl font-bold text-white mb-6">Pronto para começar?</h2>
+               <p className="text-slate-400">Solicite seu orçamento agora mesmo.</p>
+             </div>
+             <ContactForm />
+         </div>
+      </section>
+
+      <footer id="contato" className="bg-slate-950 border-t border-slate-900 pt-20 pb-10">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid md:grid-cols-4 gap-12 mb-16">
+          <div className="col-span-1 md:col-span-2">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-10 h-10 bg-brand-600 rounded-xl flex items-center justify-center text-white font-bold shadow-lg shadow-brand-900/50">W</div>
+              <span className="font-bold text-2xl text-white">WebNova</span>
+            </div>
+            <p className="text-slate-400 mb-8 max-w-sm leading-relaxed">
+              Desenvolvemos soluções digitais de alto impacto para empresas que buscam liderança no mercado. Qualidade, rapidez e suporte premium.
+            </p>
+            <div className="flex gap-4">
+              <a href="#" className="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center text-slate-400 hover:bg-brand-600 hover:text-white transition-all">
+                <span className="sr-only">Instagram</span>
+                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/></svg>
+              </a>
+              <a href="#" className="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center text-slate-400 hover:bg-brand-600 hover:text-white transition-all">
+                <span className="sr-only">Facebook</span>
+                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M9 8h-3v4h3v12h5v-12h3.642l.358-4h-4v-1.667c0-.955.192-1.333 1.115-1.333h2.885v-5h-3.808c-3.596 0-5.192 1.583-5.192 4.615v3.385z"/></svg>
+              </a>
+               <a href="#" className="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center text-slate-400 hover:bg-brand-600 hover:text-white transition-all">
+                <span className="sr-only">TikTok</span>
+                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M12.525.02c1.31-.02 2.61-.01 3.91-.02.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.05-2.89-.35-4.2-.97-.57-.26-1.1-.59-1.62-.93-.01 2.92.01 5.84-.02 8.75-.08 1.4-.54 2.79-1.35 3.94-1.31 1.92-3.58 3.17-5.91 3.21-1.43.08-2.86-.31-4.08-1.03-2.02-1.19-3.44-3.37-3.65-5.71-.02-.5-.03-1-.01-1.49.18-1.9 1.12-3.72 2.58-4.96 1.66-1.44 3.98-2.13 6.15-1.72.02 1.48-.04 2.96-.04 4.44-.99-.32-2.15-.23-3.02.37-.63.41-1.11 1.04-1.36 1.75-.21.51-.15 1.07-.14 1.61.24 1.64 1.82 3.02 3.5 2.87 1.12-.01 2.19-.66 2.77-1.61.19-.33.4-.67.41-1.06.1-1.79.06-3.57.07-5.36.01-4.03-.01-8.05.02-12.07z"/></svg>
+              </a>
+              <a href="#" className="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center text-slate-400 hover:bg-brand-600 hover:text-white transition-all">
+                <span className="sr-only">YouTube</span>
+                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M19.615 3.184c-3.604-.246-11.631-.245-15.23 0-3.897.266-4.356 2.62-4.385 8.816.029 6.185.484 8.549 4.385 8.816 3.6.245 11.626.246 15.23 0 3.897-.266 4.356-2.62 4.385-8.816-.029-6.185-.484-8.549-4.385-8.816zm-10.615 12.816v-8l8 3.993-8 4.007z"/></svg>
+              </a>
+            </div>
+          </div>
+          <div>
+            <h4 className="font-bold text-white mb-6 text-lg">Empresa</h4>
+            <ul className="space-y-4 text-sm text-slate-400">
+              <li><button onClick={() => scrollTo('quem-somos')} className="hover:text-brand-400 transition-colors">Quem Somos</button></li>
+              <li><button onClick={() => scrollTo('vantagens')} className="hover:text-brand-400 transition-colors">Vantagens</button></li>
+              <li><button onClick={() => scrollTo('planos')} className="hover:text-brand-400 transition-colors">Preços</button></li>
+            </ul>
+          </div>
+          <div>
+            <h4 className="font-bold text-white mb-6 text-lg">Contato</h4>
+            <ul className="space-y-4 text-sm text-slate-400">
+              <li className="flex items-center gap-3">
+                <Smartphone size={18} className="text-brand-500" /> {CONTACT_PHONE_DISPLAY}
+              </li>
+              <li className="flex items-center gap-3">
+                <Globe size={18} className="text-brand-500" /> Florianópolis, SC
+              </li>
+            </ul>
+            <a 
+              href={`https://wa.me/${CONTACT_WHATSAPP}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-6 inline-flex items-center gap-2 bg-green-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-green-500 transition-all shadow-lg shadow-green-900/20"
+            >
+              <MessageSquare size={18} /> Falar agora
+            </a>
+          </div>
+        </div>
+        <div className="border-t border-slate-900 pt-8 text-center text-sm text-slate-600">
+          © {new Date().getFullYear()} WebNova. Todos os direitos reservados.
+        </div>
+      </footer>
     </div>
   );
 };
@@ -813,296 +1104,6 @@ const DashboardHome = ({ user }: { user: User }) => {
            <MessageSquare size={20} /> Chamar no WhatsApp
          </a>
       </div>
-    </div>
-  );
-};
-
-// --- MAIN LANDING PAGE ---
-
-const LandingPage = ({ onPlanSelect, onLoginClick }: { onPlanSelect: (plan: any) => void, onLoginClick: () => void }) => {
-  
-  const scrollTo = (id: string) => {
-    const el = document.getElementById(id);
-    if (el) el.scrollIntoView({ behavior: 'smooth' });
-  };
-
-  // Testimonials Logic
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [itemsToShow, setItemsToShow] = useState(3);
-
-  useEffect(() => {
-    const handleResize = () => {
-      if (window.innerWidth < 768) setItemsToShow(1);
-      else if (window.innerWidth < 1024) setItemsToShow(2);
-      else setItemsToShow(3);
-    };
-    handleResize();
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
-
-  useEffect(() => {
-    const timer = setInterval(() => {
-      nextTestimonial();
-    }, 5000);
-    return () => clearInterval(timer);
-  }, [currentIndex, itemsToShow]);
-
-  const nextTestimonial = () => {
-    setCurrentIndex((prev) => (prev + 1) % (TESTIMONIALS.length - itemsToShow + 1));
-  };
-
-  const prevTestimonial = () => {
-     setCurrentIndex((prev) => (prev === 0 ? TESTIMONIALS.length - itemsToShow : prev - 1));
-  };
-
-  return (
-    <div className="min-h-screen flex flex-col bg-dark-950 text-slate-50">
-      <Navbar onLoginClick={onLoginClick} onScrollTo={scrollTo} />
-      
-      <Hero onCtaClick={() => scrollTo('planos')} />
-
-      <Section id="quem-somos" title="Quem Somos" subtitle="Especialistas em criar experiências digitais que impulsionam negócios." bg="dark">
-        <div className="grid md:grid-cols-2 gap-16 items-center">
-          <div className="order-2 md:order-1 space-y-8 text-slate-300 text-lg leading-relaxed">
-            <p>
-              Somos mais que uma agência de desenvolvimento. Somos parceiros do seu crescimento. 
-              Nossa equipe multidisciplinar une <strong className="text-white">Design, Tecnologia e Marketing</strong> para entregar não apenas um site, 
-              mas uma ferramenta poderosa de vendas.
-            </p>
-            <ul className="space-y-5">
-              {[
-                "Equipe de desenvolvedores sênior",
-                "Especialistas em UI/UX Design",
-                "Suporte Humanizado VIP",
-                "Foco total em performance e SEO"
-              ].map((item, idx) => (
-                <li key={idx} className="flex items-center gap-4 group">
-                  <div className="bg-green-500/10 p-2 rounded-lg group-hover:bg-green-500/20 transition-colors">
-                     <CheckCircle className="text-green-500 flex-shrink-0" size={20} />
-                  </div>
-                  <span className="group-hover:text-white transition-colors">{item}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-          <div className="order-1 md:order-2 relative">
-            <div className="absolute -inset-4 bg-brand-500/20 rounded-2xl blur-2xl"></div>
-            <img 
-              src="https://picsum.photos/800/600?office" 
-              alt="Team working" 
-              className="relative rounded-2xl shadow-2xl border border-white/10 grayscale hover:grayscale-0 transition-all duration-700"
-            />
-          </div>
-        </div>
-      </Section>
-
-      <Section id="vantagens" title="Por que escolher a WebNova?" bg="darker">
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-          <FeatureCard 
-            icon={Code} 
-            title="Código Personalizado" 
-            desc="Nada de templates prontos. Desenvolvemos seu site linha a linha para máxima performance, segurança e exclusividade." 
-          />
-          <FeatureCard 
-            icon={Smartphone} 
-            title="Totalmente Responsivo" 
-            desc="Seu site perfeito em qualquer tela. Mobile-first design garantindo a melhor experiência em celulares e tablets." 
-          />
-          <FeatureCard 
-            icon={Rocket} 
-            title="Alta Performance" 
-            desc="Sites otimizados para o Google, carregamento ultrarrápido (Vercel) e melhores pontuações no Core Web Vitals." 
-          />
-          <FeatureCard 
-            icon={Palette} 
-            title="Design Exclusivo" 
-            desc="Nossa equipe de UI/UX cria uma identidade visual única, alinhada com a psicologia das cores da sua marca." 
-          />
-          <FeatureCard 
-            icon={Search} 
-            title="SEO Otimizado" 
-            desc="Estrutura de código preparada para que seu site seja encontrado facilmente pelos mecanismos de busca como o Google." 
-          />
-          <FeatureCard 
-            icon={Headphones} 
-            title="Suporte Humanizado" 
-            desc="Sem robôs. Fale diretamente com nossa equipe técnica via WhatsApp para resolver qualquer questão rapidamente." 
-          />
-        </div>
-      </Section>
-
-      <Section id="como-trabalhamos" title="Como Trabalhamos" subtitle="Processo transparente e ágil para colocar sua empresa no topo." bg="dark">
-         <Timeline />
-      </Section>
-
-      <Section id="planos" title="Nossos Planos" subtitle="Investimento transparente. Escolha a solução ideal para o seu momento." bg="darker">
-        <div className="grid md:grid-cols-2 xl:grid-cols-4 gap-8">
-          {PLANS.map((plan) => (
-            <div key={plan.id} className={`relative bg-slate-900 rounded-3xl flex flex-col border transition-all duration-300 hover:shadow-2xl hover:-translate-y-2 ${plan.recommended ? 'border-brand-500 shadow-brand-500/20 scale-105 z-10' : 'border-slate-800 hover:border-slate-700'}`}>
-              {plan.recommended && (
-                <div className="absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-brand-500 text-white px-6 py-2 rounded-full text-sm font-bold shadow-lg shadow-brand-500/40">
-                  Mais Popular
-                </div>
-              )}
-              <div className="p-8 flex-grow">
-                <h3 className="text-xl font-bold text-white mb-3">{plan.title}</h3>
-                <p className="text-sm text-slate-400 mb-8 min-h-[40px]">{plan.description}</p>
-                <div className="mb-8">
-                  <span className="text-4xl font-extrabold text-white">R$ {plan.price}</span>
-                  <span className="text-slate-500 font-medium">/único</span>
-                </div>
-                <ul className="space-y-4 mb-8">
-                  {plan.features.map((feature, idx) => (
-                    <li key={idx} className="flex items-start gap-3 text-sm text-slate-300">
-                      <CheckCircle size={16} className="text-brand-400 flex-shrink-0 mt-0.5" />
-                      {feature}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-              <div className="p-8 pt-0 mt-auto">
-                <button 
-                  onClick={() => onPlanSelect(plan)}
-                  className={`w-full py-4 rounded-xl font-bold transition-all shadow-lg flex items-center justify-center gap-2 ${
-                    plan.recommended 
-                      ? 'bg-brand-600 text-white hover:bg-brand-500 shadow-brand-500/30' 
-                      : 'bg-slate-800 text-white hover:bg-slate-700 border border-slate-700'
-                  }`}
-                >
-                  Contratar Agora <ArrowRight size={16} />
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-      </Section>
-
-      <Section id="depoimentos" title="O que dizem nossos clientes" bg="dark">
-        <div className="max-w-7xl mx-auto relative px-4 sm:px-10">
-          
-          <button onClick={prevTestimonial} className="absolute left-0 top-1/2 -translate-y-1/2 z-20 p-2 bg-slate-800 rounded-full text-white hover:bg-brand-600 transition-colors shadow-lg border border-slate-700">
-            <ChevronLeft size={24} />
-          </button>
-          
-          <div className="overflow-hidden">
-            <div 
-              className="flex transition-transform duration-500 ease-in-out"
-              style={{ transform: `translateX(-${currentIndex * (100 / itemsToShow)}%)` }}
-            >
-              {TESTIMONIALS.map((testimonial) => (
-                <div 
-                  key={testimonial.id}
-                  className="flex-shrink-0 px-4"
-                  style={{ width: `${100 / itemsToShow}%` }}
-                >
-                  <div className="bg-slate-800/50 border border-white/5 p-8 rounded-3xl h-full flex flex-col backdrop-blur-sm hover:border-brand-500/20 transition-all">
-                    <div className="flex mb-4">
-                      {[...Array(5)].map((_, i) => (
-                        <Star key={i} size={18} className="text-amber-400 fill-current" />
-                      ))}
-                    </div>
-                    <p className="text-slate-300 italic mb-6 flex-grow leading-relaxed">"{testimonial.content}"</p>
-                    <div className="flex items-center gap-4 mt-auto">
-                      <img src={testimonial.avatar} alt={testimonial.name} className="w-12 h-12 rounded-full border-2 border-brand-500/50" />
-                      <div>
-                        <h5 className="font-bold text-white text-sm">{testimonial.name}</h5>
-                        <p className="text-xs text-brand-400 uppercase font-medium">{testimonial.role}</p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <button onClick={nextTestimonial} className="absolute right-0 top-1/2 -translate-y-1/2 z-20 p-2 bg-slate-800 rounded-full text-white hover:bg-brand-600 transition-colors shadow-lg border border-slate-700">
-            <ChevronRight size={24} />
-          </button>
-
-          <div className="flex justify-center gap-2 mt-8">
-             {Array.from({ length: TESTIMONIALS.length - itemsToShow + 1 }).map((_, idx) => (
-               <button 
-                  key={idx}
-                  onClick={() => setCurrentIndex(idx)}
-                  className={`h-1.5 rounded-full transition-all duration-300 ${idx === currentIndex ? 'w-8 bg-brand-500' : 'w-2 bg-slate-700'}`}
-               />
-             ))}
-          </div>
-        </div>
-      </Section>
-
-      <section className="py-24 bg-dark-950 relative">
-         <div className="max-w-7xl mx-auto px-4">
-             <div className="text-center mb-12">
-               <h2 className="text-3xl md:text-5xl font-bold text-white mb-6">Pronto para começar?</h2>
-               <p className="text-slate-400">Solicite seu orçamento agora mesmo.</p>
-             </div>
-             <ContactForm />
-         </div>
-      </section>
-
-      <footer id="contato" className="bg-slate-950 border-t border-slate-900 pt-20 pb-10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid md:grid-cols-4 gap-12 mb-16">
-          <div className="col-span-1 md:col-span-2">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="w-10 h-10 bg-brand-600 rounded-xl flex items-center justify-center text-white font-bold shadow-lg shadow-brand-900/50">W</div>
-              <span className="font-bold text-2xl text-white">WebNova</span>
-            </div>
-            <p className="text-slate-400 mb-8 max-w-sm leading-relaxed">
-              Desenvolvemos soluções digitais de alto impacto para empresas que buscam liderança no mercado. Qualidade, rapidez e suporte premium.
-            </p>
-            <div className="flex gap-4">
-              <a href="#" className="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center text-slate-400 hover:bg-brand-600 hover:text-white transition-all">
-                <span className="sr-only">Instagram</span>
-                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/></svg>
-              </a>
-              <a href="#" className="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center text-slate-400 hover:bg-brand-600 hover:text-white transition-all">
-                <span className="sr-only">Facebook</span>
-                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M9 8h-3v4h3v12h5v-12h3.642l.358-4h-4v-1.667c0-.955.192-1.333 1.115-1.333h2.885v-5h-3.808c-3.596 0-5.192 1.583-5.192 4.615v3.385z"/></svg>
-              </a>
-               <a href="#" className="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center text-slate-400 hover:bg-brand-600 hover:text-white transition-all">
-                <span className="sr-only">TikTok</span>
-                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M12.525.02c1.31-.02 2.61-.01 3.91-.02.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.05-2.89-.35-4.2-.97-.57-.26-1.1-.59-1.62-.93-.01 2.92.01 5.84-.02 8.75-.08 1.4-.54 2.79-1.35 3.94-1.31 1.92-3.58 3.17-5.91 3.21-1.43.08-2.86-.31-4.08-1.03-2.02-1.19-3.44-3.37-3.65-5.71-.02-.5-.03-1-.01-1.49.18-1.9 1.12-3.72 2.58-4.96 1.66-1.44 3.98-2.13 6.15-1.72.02 1.48-.04 2.96-.04 4.44-.99-.32-2.15-.23-3.02.37-.63.41-1.11 1.04-1.36 1.75-.21.51-.15 1.07-.14 1.61.24 1.64 1.82 3.02 3.5 2.87 1.12-.01 2.19-.66 2.77-1.61.19-.33.4-.67.41-1.06.1-1.79.06-3.57.07-5.36.01-4.03-.01-8.05.02-12.07z"/></svg>
-              </a>
-              <a href="#" className="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center text-slate-400 hover:bg-brand-600 hover:text-white transition-all">
-                <span className="sr-only">YouTube</span>
-                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M19.615 3.184c-3.604-.246-11.631-.245-15.23 0-3.897.266-4.356 2.62-4.385 8.816.029 6.185.484 8.549 4.385 8.816 3.6.245 11.626.246 15.23 0 3.897-.266 4.356-2.62 4.385-8.816-.029-6.185-.484-8.549-4.385-8.816zm-10.615 12.816v-8l8 3.993-8 4.007z"/></svg>
-              </a>
-            </div>
-          </div>
-          <div>
-            <h4 className="font-bold text-white mb-6 text-lg">Empresa</h4>
-            <ul className="space-y-4 text-sm text-slate-400">
-              <li><button onClick={() => scrollTo('quem-somos')} className="hover:text-brand-400 transition-colors">Quem Somos</button></li>
-              <li><button onClick={() => scrollTo('vantagens')} className="hover:text-brand-400 transition-colors">Vantagens</button></li>
-              <li><button onClick={() => scrollTo('planos')} className="hover:text-brand-400 transition-colors">Preços</button></li>
-            </ul>
-          </div>
-          <div>
-            <h4 className="font-bold text-white mb-6 text-lg">Contato</h4>
-            <ul className="space-y-4 text-sm text-slate-400">
-              <li className="flex items-center gap-3">
-                <Smartphone size={18} className="text-brand-500" /> {CONTACT_PHONE_DISPLAY}
-              </li>
-              <li className="flex items-center gap-3">
-                <Globe size={18} className="text-brand-500" /> Florianópolis, SC
-              </li>
-            </ul>
-            <a 
-              href={`https://wa.me/${CONTACT_WHATSAPP}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="mt-6 inline-flex items-center gap-2 bg-green-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-green-500 transition-all shadow-lg shadow-green-900/20"
-            >
-              <MessageSquare size={18} /> Falar agora
-            </a>
-          </div>
-        </div>
-        <div className="border-t border-slate-900 pt-8 text-center text-sm text-slate-600">
-          © {new Date().getFullYear()} WebNova. Todos os direitos reservados.
-        </div>
-      </footer>
     </div>
   );
 };
