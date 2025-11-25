@@ -31,7 +31,7 @@ export const PLANS: PlanDetails[] = [
   {
     id: PlanType.ONE_PAGE,
     title: 'One Page / Landing Page',
-    price: 0.70, // Valor de teste
+    price: 697.00, // Valor de teste
     description: 'Ideal para campanhas de vendas e profissionais liberais.',
     features: [
       'Site de página única (rolagem)',
@@ -44,7 +44,7 @@ export const PLANS: PlanDetails[] = [
   {
     id: PlanType.INSTITUTIONAL,
     title: 'Institucional',
-    price: 1.00, // Valor de teste
+    price: 997.00, // Valor de teste
     description: 'Para empresas que precisam apresentar seus serviços.',
     features: [
       'Até 5 páginas',
@@ -58,7 +58,7 @@ export const PLANS: PlanDetails[] = [
   {
     id: PlanType.BLOG,
     title: 'Portal de Notícias / Blog',
-    price: 2.00, // Valor de teste
+    price: 1997.00, // Valor de teste
     description: 'Site dinâmico para produtores de conteúdo.',
     features: [
       'Área Administrativa para Posts',
@@ -71,7 +71,7 @@ export const PLANS: PlanDetails[] = [
   {
     id: PlanType.ECOMMERCE,
     title: 'Loja Virtual',
-    price: 3.00, // Valor de teste
+    price: 2997.00, // Valor de teste
     description: 'Venda seus produtos online com segurança.',
     features: [
       'Cadastro de Produtos e Categorias',
