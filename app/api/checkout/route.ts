@@ -1,15 +1,15 @@
 import { MercadoPagoConfig, Preference } from 'mercadopago';
 import { NextResponse } from 'next/server';
 // Importa constantes e tipos subindo os níveis de pasta corretos
-import { MP_ACCESS_TOKEN, VIP_SUPPORT_PRICES, UPSALE_PRICE } from '../../constants';
+import { MP_ACCESS_TOKEN, PLANS, VIP_SUPPORT_MULTIPLIER, UPSALE_PRICE } from '../../constants';
 import { PlanType } from '../../types';
 
 // Configura o cliente do Mercado Pago com sua credencial
-// Se a chave não estiver configurada, isso pode gerar erro na inicialização ou no uso
 const client = new MercadoPagoConfig({ accessToken: MP_ACCESS_TOKEN });
 
 export async function POST(request: Request) {
   try {
+    // Validação básica da chave
     if (!MP_ACCESS_TOKEN || MP_ACCESS_TOKEN.includes('COLE_SEU_TOKEN')) {
         throw new Error("Access Token do Mercado Pago não configurado corretamente.");
     }
@@ -44,7 +44,9 @@ export async function POST(request: Request) {
     // 3. Opcional: Suporte VIP
     if (includeSupport) {
         // Busca o preço correto baseado no tipo de plano
-        const supportPrice = VIP_SUPPORT_PRICES[planId as PlanType] || 250; 
+        const plan = PLANS.find(p => p.id === planId);
+        const supportPrice = plan ? (plan.price * VIP_SUPPORT_MULTIPLIER) : 250;
+        
         items.push({
             id: 'vip-support',
             title: 'Suporte VIP Ilimitado Premium',
@@ -55,18 +57,20 @@ export async function POST(request: Request) {
     }
 
     // Define a URL base (Localhost ou Produção)
+    // Remove barra final para evitar duplicidade
     const baseUrl = (process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000').replace(/\/$/, '');
 
     // Configuração base da preferência
     const preferenceData = {
       body: {
-        items: items, // Envia a lista detalhada
+        items: items, // Envia a lista detalhada de itens
         payer: {
           email: email, 
         },
         // CONFIGURAÇÃO DE MÉTODOS DE PAGAMENTO
-        // 'excluded_payment_types: []' força o Mercado Pago a não esconder nada (Pix, Boleto, Cartão)
-        // REMOVIDO: default_payment_method_id: 'pix' (Causava erro de validação se o PIX não estivesse disponível)
+        // 'excluded_payment_types: []' instrui o Mercado Pago a NÃO excluir nada.
+        // ISSO É CRUCIAL PARA O PIX APARECER.
+        // Removemos 'default_payment_method_id' pois causava erro de validação.
         payment_methods: {
             excluded_payment_types: [],
             excluded_payment_methods: [],
@@ -81,10 +85,10 @@ export async function POST(request: Request) {
           failure: `${baseUrl}/?status=failure`,
           pending: `${baseUrl}/?status=pending`,
         },
-        auto_return: undefined, // Mantém undefined para evitar validações estritas de URL
+        auto_return: undefined, // Mantém undefined para evitar validações estritas que bloqueiam o fluxo
         notification_url: `${baseUrl}/api/webhooks/mercadopago`,
         
-        // Metadados para o Webhook identificar o pedido
+        // Metadados para o Webhook identificar o pedido posteriormente
         metadata: {
           plan_id: planId,
           include_hosting: includeHosting ? 'true' : 'false',
@@ -101,10 +105,12 @@ export async function POST(request: Request) {
         result = await preference.create(preferenceData);
     } catch (prefError) {
         console.warn("Falha na criação da preferência ideal, tentando fallback sem payment_methods específicos...", prefError);
-        // FALLBACK: Se der erro (ex: PIX indisponível), remove a configuração de payment_methods e tenta de novo
-        // Isso garante que o checkout abra de qualquer jeito (Cartão/Boleto), evitando travar o cliente.
         
-        // Correção TypeScript: Usamos 'as any' para permitir a deleção da propriedade obrigatória
+        // FALLBACK: Se der erro (ex: conta não permite certas configurações), 
+        // removemos a configuração de payment_methods e tentamos de novo.
+        // Isso garante que o link seja gerado de qualquer forma, evitando travar o cliente.
+        
+        // Casting para 'any' para evitar erro de TypeScript no delete
         delete (preferenceData.body as any).payment_methods;
         
         result = await preference.create(preferenceData);
@@ -119,7 +125,7 @@ export async function POST(request: Request) {
     console.error('Detalhes:', errorDetails);
     console.error('---------------------------------');
     
-    // Retorna o erro detalhado para o frontend mostrar no alert
+    // Retorna o erro detalhado para o frontend mostrar no alert, facilitando o debug
     return NextResponse.json(
       { 
         error: 'Erro ao processar pagamento',
