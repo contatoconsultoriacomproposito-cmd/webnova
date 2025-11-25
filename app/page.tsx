@@ -1169,6 +1169,13 @@ export default function Home() {
   useEffect(() => {
     let mounted = true;
 
+    // Verifica se houve erro de hash (link expirado)
+    if (window.location.hash.includes('error=access_denied') && window.location.hash.includes('error_code=otp_expired')) {
+       alert("O link de login expirou ou já foi utilizado. Por favor, solicite um novo link.");
+       // Limpa a URL para evitar loop de erro
+       window.history.replaceState(null, '', window.location.pathname);
+    }
+
     const initSession = async () => {
       try {
         const timeoutPromise = new Promise(resolve => setTimeout(resolve, 3000));
