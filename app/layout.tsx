@@ -1,12 +1,15 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
-import "./globals.css"; // <--- Importante: Isso carrega o Tailwind
+import "./globals.css";
 
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: "WebNova - Criação de Sites Premium",
   description: "Transforme sua presença digital com sites de alta performance.",
+  verification: {
+    google: "VSnWHoJwozxbXr14wUaEyrUlPJUixKdQdDjC6RvqzZg",
+  },
 };
 
 export default function RootLayout({
