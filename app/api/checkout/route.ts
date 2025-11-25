@@ -50,6 +50,7 @@ export async function POST(request: Request) {
     }
 
     // Define a URL base (Localhost ou Produção)
+    // Remove barra no final se houver para evitar duplicação
     const baseUrl = (process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000').replace(/\/$/, '');
 
     // Cria a preferência de pagamento no Mercado Pago
@@ -60,13 +61,14 @@ export async function POST(request: Request) {
         payer: {
           email: email, 
         },
-        // CONFIGURAÇÃO CRÍTICA PARA PIX
-        // Ao passar arrays vazios, instruímos o Mercado Pago a NÃO excluir nenhum método.
-        // Isso força a exibição de PIX, Boleto e Cartões disponíveis para a conta.
+        // CONFIGURAÇÃO DE MÉTODOS DE PAGAMENTO
+        // 'excluded_payment_types: []' força o Mercado Pago a não esconder nada (Pix, Boleto, Cartão)
+        // 'default_payment_method_id: pix' tenta iniciar o checkout já com o PIX aberto
         payment_methods: {
-            excluded_payment_types: [], 
+            excluded_payment_types: [],
             excluded_payment_methods: [],
-            installments: 12
+            installments: 12,
+            default_payment_method_id: 'pix'
         },
         // Nome na fatura do cartão
         statement_descriptor: 'WEBNOVA SAAS',
@@ -77,7 +79,7 @@ export async function POST(request: Request) {
           failure: `${baseUrl}/?status=failure`,
           pending: `${baseUrl}/?status=pending`,
         },
-        auto_return: undefined, // Desativado para evitar erro de validação em localhost/vercel em alguns casos
+        auto_return: undefined, // Mantém undefined para evitar validações estritas de URL em alguns navegadores
         notification_url: `${baseUrl}/api/webhooks/mercadopago`,
         
         // Metadados para o Webhook identificar o pedido
