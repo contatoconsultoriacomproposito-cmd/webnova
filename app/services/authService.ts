@@ -12,14 +12,15 @@ const mapProfileToUser = (profile: any, authId: string, email: string): User => 
     avatarUrl: profile.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(profile.full_name || 'U')}&background=0ea5e9&color=fff`,
     
     // Novos campos de serviço (inicializados como false/null se não existirem)
-    // Em um cenário real, estas colunas devem existir na tabela 'profiles' ou em tabelas relacionadas
     hosting: {
         active: profile.hosting_active || false,
         expiryDate: profile.hosting_expiry,
+        planYears: profile.hosting_plan_years
     },
     domain: {
         active: profile.domain_active || false,
         expiryDate: profile.domain_expiry,
+        domainName: profile.domain_name
     },
     vipSupport: {
         active: profile.vip_support_active || false,
@@ -32,6 +33,7 @@ const mapProfileToUser = (profile: any, authId: string, email: string): User => 
 
 export const loginWithEmail = async (email: string) => {
   // URL FIXADA DA VERCEL PARA PRODUÇÃO
+  // Garante que o link mágico sempre volte para o site oficial, evitando localhost
   const redirectTo = 'https://webnova-seven.vercel.app';
 
   // Login via Magic Link (Email sem senha)
@@ -49,6 +51,23 @@ export const loginWithEmail = async (email: string) => {
   return { data, error };
 };
 
+export const loginWithGoogle = async () => {
+    // URL FIXADA DA VERCEL PARA PRODUÇÃO
+    const redirectTo = 'https://webnova-seven.vercel.app';
+
+    const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+            redirectTo: redirectTo,
+            queryParams: {
+                access_type: 'offline',
+                prompt: 'consent',
+            },
+        },
+    });
+    return { data, error };
+};
+
 export const getCurrentUser = async (): Promise<User | null> => {
   // 1. Pega a sessão ativa
   const { data: { session } } = await supabase.auth.getSession();
@@ -64,7 +83,14 @@ export const getCurrentUser = async (): Promise<User | null> => {
 
   if (error || !profile) {
     console.error('Erro ao buscar perfil:', error);
-    return null;
+    // Se tiver sessão mas não tiver perfil (erro raro, mas possível), tenta retornar um usuário básico
+    return {
+        id: session.user.id,
+        name: session.user.user_metadata.full_name || session.user.email?.split('@')[0] || 'Usuário',
+        email: session.user.email!,
+        plan: PlanType.INSTITUTIONAL,
+        avatarUrl: session.user.user_metadata.avatar_url
+    };
   }
 
   return mapProfileToUser(profile, session.user.id, session.user.email!);
