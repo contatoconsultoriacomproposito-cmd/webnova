@@ -9,17 +9,30 @@ const mapProfileToUser = (profile: any, authId: string, email: string): User => 
     email: email,
     plan: (profile.role as PlanType) || PlanType.INSTITUTIONAL,
     planExpiry: new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString(), 
-    avatarUrl: profile.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(profile.full_name || 'U')}&background=0ea5e9&color=fff`
+    avatarUrl: profile.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(profile.full_name || 'U')}&background=0ea5e9&color=fff`,
+    
+    // Novos campos de serviço (inicializados como false/null se não existirem)
+    // Em um cenário real, estas colunas devem existir na tabela 'profiles' ou em tabelas relacionadas
+    hosting: {
+        active: profile.hosting_active || false,
+        expiryDate: profile.hosting_expiry,
+    },
+    domain: {
+        active: profile.domain_active || false,
+        expiryDate: profile.domain_expiry,
+    },
+    vipSupport: {
+        active: profile.vip_support_active || false,
+        expiryDate: profile.vip_support_expiry,
+    },
+    // Se vipSupport.active for true, mostra ilimitado, senão mostra o saldo (default 3)
+    supportTicketsRemaining: profile.vip_support_active ? 'unlimited' : (profile.support_balance || 3)
   };
 };
 
 export const loginWithEmail = async (email: string) => {
-  // --- CORREÇÃO DEFINITIVA ---
-  // Forçamos a URL da Vercel. Não há condicional.
-  // Isso garante que o link do email SEMPRE leve para o site online.
+  // URL FIXADA DA VERCEL PARA PRODUÇÃO
   const redirectTo = 'https://webnova-seven.vercel.app';
-
-  console.log('Solicitando login com redirect para:', redirectTo);
 
   // Login via Magic Link (Email sem senha)
   const { data, error } = await supabase.auth.signInWithOtp({
@@ -51,7 +64,6 @@ export const getCurrentUser = async (): Promise<User | null> => {
 
   if (error || !profile) {
     console.error('Erro ao buscar perfil:', error);
-    // Se tiver sessão mas não tiver perfil (erro raro), retorna null
     return null;
   }
 

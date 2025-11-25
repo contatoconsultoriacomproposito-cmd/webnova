@@ -13,6 +13,22 @@ export interface User {
   plan: PlanType;
   planExpiry?: string;
   avatarUrl?: string;
+  // Novos campos para controle de serviços
+  hosting?: {
+    active: boolean;
+    expiryDate?: string;
+    planYears?: number;
+  };
+  domain?: {
+    active: boolean;
+    expiryDate?: string;
+    domainName?: string;
+  };
+  vipSupport?: {
+    active: boolean;
+    expiryDate?: string;
+  };
+  supportTicketsRemaining?: number | 'unlimited';
 }
 
 export interface PlanDetails {
@@ -31,13 +47,6 @@ export interface Testimonial {
   content: string;
   avatar: string;
   rating: number;
-}
-
-export interface SupportTicket {
-  id: string;
-  subject: string;
-  status: 'open' | 'closed' | 'pending';
-  date: string;
 }
 
 export interface BlogPost {

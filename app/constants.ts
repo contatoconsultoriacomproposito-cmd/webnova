@@ -2,36 +2,38 @@ import { PlanType, PlanDetails, Testimonial } from './types';
 
 export const CONTACT_WHATSAPP = '5548996536507'; 
 export const CONTACT_PHONE_DISPLAY = '(48) 99653-6507';
-export const UPSALE_PRICE = 0.50; // Preço de teste para Hospedagem
+export const UPSALE_PRICE = 0.50; // Mantido para compatibilidade com testes antigos, mas a lógica nova usará as tabelas abaixo.
 
-// Preços do Suporte VIP Ilimitado por Tipo de Site (Valores de Teste)
-export const VIP_SUPPORT_PRICES = {
-  [PlanType.ONE_PAGE]: 0.25,
-  [PlanType.INSTITUTIONAL]: 0.45,
-  [PlanType.BLOG]: 0.85,
-  [PlanType.ECOMMERCE]: 1.25,
-  [PlanType.ADMIN]: 0
-};
+// TABELAS DE PREÇOS - NOVAS REGRAS DE NEGÓCIO
 
-// Planos de Renovação de Hospedagem (Valores de Teste)
-export const HOSTING_RENEWAL_OPTIONS = [
-  { years: 1, price: 1.50, label: '1 Ano', discount: '' },
-  { years: 2, price: 2.00, label: '2 Anos', discount: 'Economize R$ 100' },
-  { years: 3, price: 2.50, label: '3 Anos', discount: 'Melhor Valor' },
+// Domínio
+export const DOMAIN_PRICES = [
+  { years: 1, price: 100.00, supportsBonus: 3, label: '1 Ano' },
+  { years: 2, price: 180.00, supportsBonus: 5, label: '2 Anos' },
+  { years: 3, price: 250.00, supportsBonus: 10, label: '3 Anos' },
 ];
+
+// Hospedagem
+export const HOSTING_PRICES = [
+  { years: 1, price: 150.00, supportsBonus: 3, label: '1 Ano' },
+  { years: 2, price: 275.00, supportsBonus: 5, label: '2 Anos' },
+  { years: 3, price: 350.00, supportsBonus: 10, label: '3 Anos' },
+];
+
+// O preço do Suporte VIP é calculado dinamicamente: Valor do Plano * 0.75
+export const VIP_SUPPORT_MULTIPLIER = 0.75;
 
 // CREDENCIAIS DO MERCADO PAGO
 export const MP_ACCESS_TOKEN = 'APP_USR-7307423595236182-112414-d6ae49903b7f882f9979cf8dd126ec92-371667048';
 
-// CREDENCIAIS ADMIN SUPABASE (Necessário para o Webhook)
-// Pegue em: Project Settings > API > service_role (secret)
-export const SUPABASE_SERVICE_ROLE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh0aWNnZmFmbGh4bWJuZXN3enZ5Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NDAwNzgzNCwiZXhwIjoyMDc5NTgzODM0fQ.ylSjTiN4K6t4a23fa4cXZwqkter3xze3XT0zFw1cfq0';
+// CREDENCIAIS ADMIN SUPABASE
+export const SUPABASE_SERVICE_ROLE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh0aWNnZmFmbGh4bWJuZXN3enZ5Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NDAwNzgzNCwiZXhwIjoyMDc5NTgzODM0fQ.ylSjTiN4K6t4a23fa4cXZwqkter3xze3XT0zFw1cfq0'; 
 
 export const PLANS: PlanDetails[] = [
   {
     id: PlanType.ONE_PAGE,
     title: 'One Page / Landing Page',
-    price: 5.00, // Valor de teste
+    price: 697.00,
     description: 'Ideal para campanhas de vendas e profissionais liberais.',
     features: [
       'Site de página única (rolagem)',
@@ -44,7 +46,7 @@ export const PLANS: PlanDetails[] = [
   {
     id: PlanType.INSTITUTIONAL,
     title: 'Institucional',
-    price: 6.00, // Valor de teste
+    price: 997.00,
     description: 'Para empresas que precisam apresentar seus serviços.',
     features: [
       'Até 5 páginas',
@@ -58,7 +60,7 @@ export const PLANS: PlanDetails[] = [
   {
     id: PlanType.BLOG,
     title: 'Portal de Notícias / Blog',
-    price: 7.00, // Valor de teste
+    price: 1997.00,
     description: 'Site dinâmico para produtores de conteúdo.',
     features: [
       'Área Administrativa para Posts',
@@ -71,7 +73,7 @@ export const PLANS: PlanDetails[] = [
   {
     id: PlanType.ECOMMERCE,
     title: 'Loja Virtual',
-    price: 8.00, // Valor de teste
+    price: 2997.00,
     description: 'Venda seus produtos online com segurança.',
     features: [
       'Cadastro de Produtos e Categorias',
