@@ -542,7 +542,7 @@ export default function AppHome() {
 
     if (!currentUser) {
         // <-- CORREÇÃO 1: Substitui redirect('/') por router.push e retorna null.
-        router.push('/'); 
+        router.replace('/'); 
         return null; // É crucial retornar null para interromper a renderização
     }
 
