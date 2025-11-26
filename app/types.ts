@@ -1,4 +1,5 @@
 export enum PlanType {
+  NO_PLAN = 'NO_PLAN',
   ONE_PAGE = 'ONE_PAGE',
   INSTITUTIONAL = 'INSTITUTIONAL',
   BLOG = 'BLOG',

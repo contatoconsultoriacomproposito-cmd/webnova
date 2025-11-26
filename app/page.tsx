@@ -550,19 +550,48 @@ const DashboardLayout = ({ user, children, onLogout }: any) => {
             <Layout size={20} className="text-brand-400" /> Visão Geral
           </button>
 
-          <button onClick={onLogout} className="w-full flex items-center gap-3 px-4 py-3 text-slate-400 hover:text-white hover:bg-red-500/10 rounded-xl transition-all mt-auto">
-             <LogOut size={20} /> Sair
-          </button>
+          {/* Only show extra menu items if user has a real plan */}
+          {user.plan !== PlanType.NO_PLAN && (
+            <>
+                {(user.plan === PlanType.BLOG || user.plan === PlanType.ADMIN) && (
+                    <button className="w-full flex items-center gap-3 px-4 py-3 text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl transition-all">
+                    <FileText size={20} /> Postagens (Blog)
+                    </button>
+                )}
+
+                {(user.plan === PlanType.ECOMMERCE || user.plan === PlanType.ADMIN) && (
+                    <>
+                    <button className="w-full flex items-center gap-3 px-4 py-3 text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl transition-all">
+                        <ShoppingBag size={20} /> Produtos
+                    </button>
+                    <button className="w-full flex items-center gap-3 px-4 py-3 text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl transition-all">
+                        <Users size={20} /> Pedidos
+                    </button>
+                    </>
+                )}
+
+                <button className="w-full flex items-center gap-3 px-4 py-3 text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl transition-all">
+                    <MessageSquare size={20} /> Suporte VIP
+                </button>
+                
+                <button className="w-full flex items-center gap-3 px-4 py-3 text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl transition-all">
+                    <Settings size={20} /> Configurações
+                </button>
+            </>
+          )}
         </div>
 
         <div className="p-4 m-4 bg-slate-800/50 rounded-2xl border border-slate-800">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 mb-4">
              <img src={user.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name || 'U')}&background=0ea5e9&color=fff`} className="w-10 h-10 rounded-full border border-slate-600" alt="avatar"/>
              <div className="overflow-hidden">
                <p className="text-sm font-bold text-white truncate">{user.name}</p>
                <p className="text-xs text-slate-500 truncate">{user.email}</p>
              </div>
           </div>
+          <button onClick={onLogout} className="w-full py-2 flex items-center justify-center gap-2 text-sm text-red-400 hover:bg-red-500/10 rounded-lg transition-all">
+            <LogOut size={16} /> Sair
+          </button>
         </div>
       </aside>
 
@@ -585,10 +614,9 @@ const DashboardLayout = ({ user, children, onLogout }: any) => {
   );
 };
 
-const DashboardHome = ({ user }: { user: User }) => {
+const DashboardHome = ({ user, onPlanSelect }: { user: User, onPlanSelect: (plan: any) => void }) => {
   
   const handleServicePurchase = async (serviceType: 'domain' | 'hosting' | 'support', option: any) => {
-    // Lógica para iniciar compra de serviços avulsos
     try {
         const response = await fetch('/api/checkout', {
             method: 'POST',
@@ -597,7 +625,7 @@ const DashboardHome = ({ user }: { user: User }) => {
                 isAddon: true,
                 addonTitle: option.title,
                 addonPrice: option.price,
-                addonId: serviceType, // Identificador do tipo de serviço
+                addonId: serviceType,
                 email: user.email
             }),
         });
@@ -614,10 +642,54 @@ const DashboardHome = ({ user }: { user: User }) => {
     }
   };
 
-  // Verifica se pode comprar suporte (regra de negócio)
+  // STATE 1: NO PLAN (New User) -> Show Plan Selection
+  if (user.plan === PlanType.NO_PLAN) {
+    return (
+        <div className="space-y-8 max-w-6xl mx-auto">
+            <div className="text-center mb-12">
+               <h1 className="text-3xl font-bold text-white mb-2">Bem-vindo, {user.name.split(' ')[0]}! 🚀</h1>
+               <p className="text-slate-400">Para começar, escolha o plano ideal para o seu projeto.</p>
+            </div>
+
+            <div className="grid md:grid-cols-2 xl:grid-cols-4 gap-6">
+                {PLANS.map((plan) => (
+                    <div key={plan.id} className={`relative bg-slate-900 rounded-3xl flex flex-col border transition-all duration-300 hover:shadow-2xl hover:-translate-y-2 ${plan.recommended ? 'border-brand-500 shadow-brand-500/20 z-10' : 'border-slate-800 hover:border-slate-700'}`}>
+                    {plan.recommended && (
+                        <div className="absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-brand-500 text-white px-4 py-1 rounded-full text-xs font-bold shadow-lg">
+                        Recomendado
+                        </div>
+                    )}
+                    <div className="p-6 flex-grow">
+                        <h3 className="text-lg font-bold text-white mb-2">{plan.title}</h3>
+                        <div className="mb-4">
+                        <span className="text-3xl font-extrabold text-white">R$ {plan.price.toFixed(2)}</span>
+                        </div>
+                        <ul className="space-y-2 mb-6">
+                        {plan.features.slice(0,3).map((feature, idx) => ( // Show only top 3 features for compact view
+                            <li key={idx} className="flex items-start gap-2 text-xs text-slate-300">
+                            <CheckCircle size={14} className="text-brand-400 flex-shrink-0 mt-0.5" />
+                            {feature}
+                            </li>
+                        ))}
+                        </ul>
+                    </div>
+                    <div className="p-6 pt-0 mt-auto">
+                        <button 
+                        onClick={() => onPlanSelect(plan)}
+                        className="w-full py-3 bg-slate-800 text-white hover:bg-brand-600 hover:text-white border border-slate-700 rounded-xl font-bold transition-all flex items-center justify-center gap-2 text-sm"
+                        >
+                        Selecionar Plano
+                        </button>
+                    </div>
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+  }
+
+  // STATE 2: HAS PLAN (Existing User) -> Show Stats & Addons
   const canBuySupport = user.hosting?.active || user.domain?.active;
-  
-  // Calcula preço do suporte (se o plano existir)
   const currentPlanPrice = PLANS.find(p => p.id === user.plan)?.price || 0;
   const supportPrice = currentPlanPrice * VIP_SUPPORT_MULTIPLIER;
 
@@ -640,7 +712,7 @@ const DashboardHome = ({ user }: { user: User }) => {
          <div className="bg-slate-900 p-6 rounded-2xl shadow-lg border border-slate-800">
             <div className="text-slate-400 text-xs font-bold uppercase mb-2">Plano Atual</div>
             <div className="text-lg font-bold text-white truncate">{PLANS.find(p => p.id === user.plan)?.title || 'Admin'}</div>
-            <div className="mt-2 text-xs text-slate-500">Expira em: {new Date(user.planExpiry || '').toLocaleDateString('pt-BR')}</div>
+            <div className="mt-2 text-xs text-slate-500">Expira em: {user.planExpiry ? new Date(user.planExpiry).toLocaleDateString('pt-BR') : 'Vitalício'}</div>
          </div>
 
          {/* Card 2: Suporte */}
@@ -766,21 +838,21 @@ const DashboardHome = ({ user }: { user: User }) => {
 // --- MAIN LANDING PAGE ---
 
 const LandingPage = ({ onPlanSelect, onLoginClick }: { onPlanSelect: (plan: any) => void, onLoginClick: () => void }) => {
+  
   const scrollTo = (id: string) => {
     const el = document.getElementById(id);
     if (el) el.scrollIntoView({ behavior: 'smooth' });
   };
 
+  // Testimonials Logic
   const [currentIndex, setCurrentIndex] = useState(0);
   const [itemsToShow, setItemsToShow] = useState(3);
 
   useEffect(() => {
     const handleResize = () => {
-      if (typeof window !== 'undefined') {
-        if (window.innerWidth < 768) setItemsToShow(1);
-        else if (window.innerWidth < 1024) setItemsToShow(2);
-        else setItemsToShow(3);
-      }
+      if (window.innerWidth < 768) setItemsToShow(1);
+      else if (window.innerWidth < 1024) setItemsToShow(2);
+      else setItemsToShow(3);
     };
     handleResize();
     window.addEventListener('resize', handleResize);
@@ -1017,6 +1089,33 @@ const LandingPage = ({ onPlanSelect, onLoginClick }: { onPlanSelect: (plan: any)
               </a>
             </div>
           </div>
+          <div>
+            <h4 className="font-bold text-white mb-6 text-lg">Empresa</h4>
+            <ul className="space-y-4 text-sm text-slate-400">
+              <li><button onClick={() => scrollTo('quem-somos')} className="hover:text-brand-400 transition-colors">Quem Somos</button></li>
+              <li><button onClick={() => scrollTo('vantagens')} className="hover:text-brand-400 transition-colors">Vantagens</button></li>
+              <li><button onClick={() => scrollTo('planos')} className="hover:text-brand-400 transition-colors">Preços</button></li>
+            </ul>
+          </div>
+          <div>
+            <h4 className="font-bold text-white mb-6 text-lg">Contato</h4>
+            <ul className="space-y-4 text-sm text-slate-400">
+              <li className="flex items-center gap-3">
+                <Smartphone size={18} className="text-brand-500" /> {CONTACT_PHONE_DISPLAY}
+              </li>
+              <li className="flex items-center gap-3">
+                <Globe size={18} className="text-brand-500" /> Florianópolis, SC
+              </li>
+            </ul>
+            <a 
+              href={`https://wa.me/${CONTACT_WHATSAPP}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-6 inline-flex items-center gap-2 bg-green-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-green-500 transition-all shadow-lg shadow-green-900/20"
+            >
+              <MessageSquare size={18} /> Falar agora
+            </a>
+          </div>
         </div>
         <div className="border-t border-slate-900 pt-8 text-center text-sm text-slate-600">
           © {new Date().getFullYear()} WebNova. Todos os direitos reservados.
@@ -1035,6 +1134,7 @@ export default function Home() {
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [loadingSession, setLoadingSession] = useState(true);
 
+  // Check active session on load
   useEffect(() => {
     let mounted = true;
 
@@ -1060,6 +1160,7 @@ export default function Home() {
 
     initSession();
 
+    // Listen for auth changes (like when clicking magic link)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (event === 'SIGNED_IN' && session) {
          const user = await getCurrentUser();
@@ -1075,6 +1176,7 @@ export default function Home() {
     };
   }, []);
 
+  // Handle plan selection from landing page
   const handlePlanSelect = (plan: any) => {
     if (!currentUser) {
       setIsLoginOpen(true);
@@ -1085,7 +1187,7 @@ export default function Home() {
   };
 
   const handleLogout = async () => {
-    setCurrentUser(null);
+    setCurrentUser(null); // Optimistic UI update
     try {
         await logout();
     } catch (error) {
@@ -1104,7 +1206,7 @@ export default function Home() {
   if (currentUser) {
     return (
       <DashboardLayout user={currentUser} onLogout={handleLogout}>
-        <DashboardHome user={currentUser} />
+        <DashboardHome user={currentUser} onPlanSelect={handlePlanSelect} />
       </DashboardLayout>
     );
   }

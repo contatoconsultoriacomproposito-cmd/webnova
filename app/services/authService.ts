@@ -7,8 +7,9 @@ const mapProfileToUser = (profile: any, authId: string, email: string): User => 
     id: authId,
     name: profile.full_name || 'Usuário',
     email: email,
-    plan: (profile.role as PlanType) || PlanType.INSTITUTIONAL,
-    planExpiry: new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString(), 
+    // CORREÇÃO: Se não tiver role no banco, assume NO_PLAN (usuário novo)
+    plan: (profile.role as PlanType) || PlanType.NO_PLAN,
+    planExpiry: profile.plan_expiry, // Agora pode vir nulo
     avatarUrl: profile.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(profile.full_name || 'U')}&background=0ea5e9&color=fff`,
     
     // Novos campos de serviço (inicializados como false/null se não existirem)
@@ -26,7 +27,6 @@ const mapProfileToUser = (profile: any, authId: string, email: string): User => 
         active: profile.vip_support_active || false,
         expiryDate: profile.vip_support_expiry,
     },
-    // Se vipSupport.active for true, mostra ilimitado, senão mostra o saldo (default 3)
     supportTicketsRemaining: profile.vip_support_active ? 'unlimited' : (profile.support_balance || 3)
   };
 };
@@ -52,12 +52,10 @@ export const loginWithGoogle = async () => {
 };
 
 export const getCurrentUser = async (): Promise<User | null> => {
-  // 1. Pega a sessão ativa
   const { data: { session } } = await supabase.auth.getSession();
   
   if (!session?.user) return null;
 
-  // 2. Busca os dados extras na tabela 'profiles'
   const { data: profile, error } = await supabase
     .from('profiles')
     .select('*')
@@ -66,12 +64,12 @@ export const getCurrentUser = async (): Promise<User | null> => {
 
   if (error || !profile) {
     console.error('Erro ao buscar perfil:', error);
-    // Fallback para usuário básico se o perfil não carregar
+    // Fallback para usuário básico com NO_PLAN
     return {
         id: session.user.id,
         name: session.user.user_metadata.full_name || session.user.email?.split('@')[0] || 'Usuário',
         email: session.user.email!,
-        plan: PlanType.INSTITUTIONAL,
+        plan: PlanType.NO_PLAN,
         avatarUrl: session.user.user_metadata.avatar_url
     };
   }
