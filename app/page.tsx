@@ -106,77 +106,123 @@ const Navbar = ({ onLoginClick, onScrollTo, user }: { onLoginClick: () => void, 
 
 // app/page.tsx - NOVO COMPONENTE
 
-  export default function Home() {
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [loadingSession, setLoadingSession] = useState(true);
-  const [isLoginOpen, setIsLoginOpen] = useState(false);
-  const [selectedPlan, setSelectedPlan] = useState<any>(null);
-  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
-  const mounted = useRef(true);
-  const router = useRouter();
+const AuthRedirector = ({ currentUser }: { currentUser: User | null }) => {
+      const router = useRouter(); // <-- Inicialize o hook
 
-  // ARQUIVO: app/page.tsx - Dentro de export default function Home()
-
-useEffect(() => {
-      // ... (fetchUser - Mantenha este bloco)
-      const fetchUser = async () => {
-          const user = await getCurrentUser();
-          // REMOVA QUALQUER REDIRECIONAMENTO OU CHECAGEM DE user AQUI
-          if (mounted.current) setCurrentUser(user);
-          if (mounted.current) setLoadingSession(false);
-      };
-      fetchUser();
+      // O código de isClient/useEffect é bom para garantir que roda apenas no navegador.
+      const [isClient, setIsClient] = useState(false);
       
-      // Mantenha o onAuthStateChange APENAS para o redirect após SIGNED_IN
-      const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-        if (_event === 'SIGNED_IN' && session) {
-          // ESSA LINHA É CRUCIAL PARA O LOGIN GOOGLE/OAUTH
-          router.replace('/app');
-        }
-      });
+      useEffect(() => {
+          setIsClient(true);
+      }, []);
 
-      return () => {
-        mounted.current = false;
-        subscription.unsubscribe();
-      };
-      // Mantenha a array de dependências vazia, [], se não estiver usando bypassAuth como dependência.
-  }, [router]);
+      // 1. Se não for cliente, não faz nada.
+      if (!isClient) {
+          return null;
+      }
 
-  const handlePlanSelect = (plan: any) => {
-    if (!currentUser) {
-      setIsLoginOpen(true);
-      return;
-    }
-    setSelectedPlan(plan);
-    setIsPaymentModalOpen(true);
+      // 2. Se o usuário está logado E já estamos no Client-Side, verificamos o redirecionamento.
+      if (currentUser) {
+          // Usamos window.location.search para obter ?bypassAuth=true
+          const bypassAuth = window.location.search.includes('bypassAuth=true');
+
+          // Se o usuário está logado E NÃO tem o bypass na URL, redirecionamos para /app
+          if (!bypassAuth) {
+              // CORREÇÃO CRÍTICA: Use router.replace para Client-Side Navigation
+              router.replace('/app');
+              return null; // Pare de renderizar assim que o redirecionamento for acionado
+          }
+      }
+
+      // Se não está logado OU tem bypass, retorna null e renderiza a Landing Page
+      return null; 
   };
 
-  // Se a sessão está carregando, mostra o loader.
-  // Se currentUser for verdadeiro, o redirect('/app') será executado no useEffect.
-  if (loadingSession) {
+  export default function Home() {
+    const router = useRouter(); // Inicializa o router
+    const [currentUser, setCurrentUser] = useState<User | null>(null);
+    const [loadingSession, setLoadingSession] = useState(true);
+    const [isLoginOpen, setIsLoginOpen] = useState(false);
+    const [selectedPlan, setSelectedPlan] = useState<any>(null);
+    const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
+    const mounted = useRef(true);
+
+    // Lógica de autenticação
+    useEffect(() => {
+        const fetchUser = async () => {
+            const user = await getCurrentUser();
+            if (mounted.current) setCurrentUser(user);
+            if (mounted.current) setLoadingSession(false);
+        };
+        fetchUser();
+
+        // Redirecionamento limpo no login (Client-Side)
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+            if (_event === 'SIGNED_IN' && session) {
+                // ✅ Usar router.replace para navegação Client-Side
+                router.replace('/app'); 
+            }
+        });
+
+        return () => {
+            mounted.current = false;
+            subscription.unsubscribe();
+        };
+    }, [router]); // Mantenha router como dependência
+
+    const handlePlanSelect = (plan: any) => {
+        if (!currentUser) {
+            setIsLoginOpen(true);
+            return;
+        }
+        setSelectedPlan(plan);
+        setIsPaymentModalOpen(true);
+    };
+
+    // ----------------------------------------------------
+    // FLUXO DE RENDERIZAÇÃO E REDIRECIONAMENTO
+
+    if (loadingSession) {
+        return (
+            <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+                <Loader2 className="w-10 h-10 text-brand-500 animate-spin" />
+            </div>
+        );
+    }
+
+    // 🚩 CHECAGEM DE REDIRECIONAMENTO NO NÍVEL MAIS ALTO
+    if (currentUser) {
+        const bypassAuth = window.location.search.includes('bypassAuth=true');
+        
+        if (!bypassAuth) {
+            // ✅ FORÇA O REDIRECIONAMENTO DO CLIENT-SIDE E INTERROMPE
+            router.replace('/app');
+            return null; // CRUCIAL: Interrompe a renderização da LandingPage
+        }
+    }
+
+    // Se não estiver logado OU tiver bypassAuth=true, renderiza a Landing Page
     return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
-        <Loader2 className="w-10 h-10 text-brand-500 animate-spin" />
-      </div>
+        <>
+            <Navbar 
+                onLoginClick={() => setIsLoginOpen(true)} 
+                onScrollTo={() => {}} 
+                user={currentUser} 
+            />
+            
+            <LandingPage 
+                onPlanSelect={handlePlanSelect} 
+                onLoginClick={() => setIsLoginOpen(true)}
+            />
+            
+            <LoginModal 
+                isOpen={isLoginOpen} 
+                onClose={() => setIsLoginOpen(false)} 
+                onLogin={() => {}} 
+            />
+            {/* PaymentModal omitido por brevidade */}
+        </>
     );
-  }
-
-  // Se não estiver logado e não estiver carregando, renderiza a Landing Page (Rota Pública)
-  return (
-    <>
-
-      <LandingPage 
-        onPlanSelect={handlePlanSelect} 
-        onLoginClick={() => setIsLoginOpen(true)}
-      />
-      <LoginModal 
-        isOpen={isLoginOpen} 
-        onClose={() => setIsLoginOpen(false)} 
-        // Não precisamos fazer nada no onLogin, pois o onAuthStateChange fará o redirect
-        onLogin={() => {}} 
-      />
-    </>
-  );
 }
 
 const Hero = ({ onCtaClick }: { onCtaClick: () => void }) => (
