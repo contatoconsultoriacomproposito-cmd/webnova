@@ -138,6 +138,81 @@ const AuthRedirector = ({ currentUser }: { currentUser: User | null }) => {
       return null; 
   };
 
+  export default function Home() {
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [loadingSession, setLoadingSession] = useState(true);
+  const [isLoginOpen, setIsLoginOpen] = useState(false);
+  const [selectedPlan, setSelectedPlan] = useState<any>(null);
+  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
+  const mounted = useRef(true);
+
+  // ARQUIVO: app/page.tsx - Dentro de export default function Home()
+
+useEffect(() => {
+      // ... (fetchUser - Mantenha este bloco)
+      const fetchUser = async () => {
+          const user = await getCurrentUser();
+          // REMOVA QUALQUER REDIRECIONAMENTO OU CHECAGEM DE user AQUI
+          if (mounted.current) setCurrentUser(user);
+          if (mounted.current) setLoadingSession(false);
+      };
+      fetchUser();
+      
+      // Mantenha o onAuthStateChange APENAS para o redirect após SIGNED_IN
+      const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+        if (_event === 'SIGNED_IN' && session) {
+          // ESSA LINHA É CRUCIAL PARA O LOGIN GOOGLE/OAUTH
+          redirect('/app');
+        }
+      });
+
+      return () => {
+        mounted.current = false;
+        subscription.unsubscribe();
+      };
+      // Mantenha a array de dependências vazia, [], se não estiver usando bypassAuth como dependência.
+  }, []);
+
+  const handlePlanSelect = (plan: any) => {
+    if (!currentUser) {
+      setIsLoginOpen(true);
+      return;
+    }
+    setSelectedPlan(plan);
+    setIsPaymentModalOpen(true);
+  };
+
+  // Se a sessão está carregando, mostra o loader.
+  // Se currentUser for verdadeiro, o redirect('/app') será executado no useEffect.
+  if (loadingSession) {
+    return (
+      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+        <Loader2 className="w-10 h-10 text-brand-500 animate-spin" />
+      </div>
+    );
+  }
+
+  // Se não estiver logado e não estiver carregando, renderiza a Landing Page (Rota Pública)
+  return (
+    <>
+      {/* NOVO: Componente que gerencia o redirecionamento */}
+      <AuthRedirector currentUser={currentUser} />
+      
+      {/* Assumindo que LandingPage é o componente que agrega toda a sua homepage */}
+      <LandingPage 
+        onPlanSelect={handlePlanSelect} 
+        onLoginClick={() => setIsLoginOpen(true)}
+      />
+      <LoginModal 
+        isOpen={isLoginOpen} 
+        onClose={() => setIsLoginOpen(false)} 
+        // Não precisamos fazer nada no onLogin, pois o onAuthStateChange fará o redirect
+        onLogin={() => {}} 
+      />
+    </>
+  );
+}
+
 const Hero = ({ onCtaClick }: { onCtaClick: () => void }) => (
   <div id="home" className="relative pt-32 pb-20 lg:pt-48 lg:pb-40 overflow-hidden min-h-screen flex items-center">
     {/* Animated Background Blobs */}
@@ -718,77 +793,3 @@ const LandingPage = ({ onPlanSelect, onLoginClick }: { onPlanSelect: (plan: any)
 
 // --- INÍCIO DA FUNÇÃO HOME ATUALIZADA ---
 
-export default function Home() {
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [loadingSession, setLoadingSession] = useState(true);
-  const [isLoginOpen, setIsLoginOpen] = useState(false);
-  const [selectedPlan, setSelectedPlan] = useState<any>(null);
-  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
-  const mounted = useRef(true);
-
-  // ARQUIVO: app/page.tsx - Dentro de export default function Home()
-
-useEffect(() => {
-      // ... (fetchUser - Mantenha este bloco)
-      const fetchUser = async () => {
-          const user = await getCurrentUser();
-          // REMOVA QUALQUER REDIRECIONAMENTO OU CHECAGEM DE user AQUI
-          if (mounted.current) setCurrentUser(user);
-          if (mounted.current) setLoadingSession(false);
-      };
-      fetchUser();
-      
-      // Mantenha o onAuthStateChange APENAS para o redirect após SIGNED_IN
-      const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-        if (_event === 'SIGNED_IN' && session) {
-          // ESSA LINHA É CRUCIAL PARA O LOGIN GOOGLE/OAUTH
-          redirect('/app');
-        }
-      });
-
-      return () => {
-        mounted.current = false;
-        subscription.unsubscribe();
-      };
-      // Mantenha a array de dependências vazia, [], se não estiver usando bypassAuth como dependência.
-  }, []);
-
-  const handlePlanSelect = (plan: any) => {
-    if (!currentUser) {
-      setIsLoginOpen(true);
-      return;
-    }
-    setSelectedPlan(plan);
-    setIsPaymentModalOpen(true);
-  };
-
-  // Se a sessão está carregando, mostra o loader.
-  // Se currentUser for verdadeiro, o redirect('/app') será executado no useEffect.
-  if (loadingSession) {
-    return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
-        <Loader2 className="w-10 h-10 text-brand-500 animate-spin" />
-      </div>
-    );
-  }
-
-  // Se não estiver logado e não estiver carregando, renderiza a Landing Page (Rota Pública)
-  return (
-    <>
-      {/* NOVO: Componente que gerencia o redirecionamento */}
-      <AuthRedirector currentUser={currentUser} />
-      
-      {/* Assumindo que LandingPage é o componente que agrega toda a sua homepage */}
-      <LandingPage 
-        onPlanSelect={handlePlanSelect} 
-        onLoginClick={() => setIsLoginOpen(true)}
-      />
-      <LoginModal 
-        isOpen={isLoginOpen} 
-        onClose={() => setIsLoginOpen(false)} 
-        // Não precisamos fazer nada no onLogin, pois o onAuthStateChange fará o redirect
-        onLogin={() => {}} 
-      />
-    </>
-  );
-}
