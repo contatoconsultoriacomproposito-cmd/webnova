@@ -4,12 +4,12 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Layout, Menu, X, CheckCircle, Smartphone, Globe, Code, Rocket, ChevronRight, Star, ArrowRight, Monitor, ShoppingBag, FileText, Settings, Users, LogOut, Plus, MessageSquare, ShieldCheck, Palette, Search, Headphones, ChevronLeft, Mail, CheckSquare, Square, Loader2, Server, Lock, AlertTriangle, LifeBuoy } from 'lucide-react';
 import { PlanType, User } from './types';
 import { PLANS, CONTACT_PHONE_DISPLAY, CONTACT_WHATSAPP, TESTIMONIALS, PROCESS_STEPS, UPSALE_PRICE, VIP_SUPPORT_MULTIPLIER, DOMAIN_PRICES, HOSTING_PRICES } from './constants';
-import { loginWithEmail, getCurrentUser, logout } from './services/authService';
+import { loginWithGoogle, getCurrentUser, logout } from './services/authService';
 import { supabase } from './supabaseClient';
 
 // --- COMPONENTES VISUAIS (NAVBAR, HERO, ETC) ---
 
-const Navbar = ({ onLoginClick, onScrollTo }: { onLoginClick: () => void, onScrollTo: (id: string) => void }) => {
+const Navbar = ({ onLoginClick, onScrollTo, user }: { onLoginClick: () => void, onScrollTo: (id: string) => void, user: User | null }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
 
@@ -41,12 +41,21 @@ const Navbar = ({ onLoginClick, onScrollTo }: { onLoginClick: () => void, onScro
               </button>
             ))}
             <div className="pl-4">
-              <button 
-                onClick={onLoginClick}
-                className="bg-white text-slate-950 px-6 py-2.5 rounded-full font-bold hover:bg-brand-50 transition-all shadow-[0_0_20px_rgba(255,255,255,0.2)] hover:shadow-[0_0_25px_rgba(255,255,255,0.3)] flex items-center gap-2 transform hover:-translate-y-0.5"
-              >
-                Login / Entrar <ChevronRight size={16} />
-              </button>
+              {user ? (
+                  <button 
+                    onClick={() => window.location.reload()} 
+                    className="bg-brand-600 text-white px-6 py-2.5 rounded-full font-bold hover:bg-brand-50 transition-all shadow-lg flex items-center gap-2"
+                  >
+                    Ir para Painel <ChevronRight size={16} />
+                  </button>
+              ) : (
+                  <button 
+                    onClick={onLoginClick}
+                    className="bg-white text-slate-950 px-6 py-2.5 rounded-full font-bold hover:bg-brand-50 transition-all shadow-[0_0_20px_rgba(255,255,255,0.2)] hover:shadow-[0_0_25px_rgba(255,255,255,0.3)] flex items-center gap-2 transform hover:-translate-y-0.5"
+                  >
+                    Login / Entrar <ChevronRight size={16} />
+                  </button>
+              )}
             </div>
           </div>
 
@@ -76,12 +85,13 @@ const Navbar = ({ onLoginClick, onScrollTo }: { onLoginClick: () => void, onScro
             ))}
             <button 
               onClick={() => {
-                onLoginClick();
+                if(user) window.location.reload();
+                else onLoginClick();
                 setIsOpen(false);
               }}
               className="w-full text-left block px-4 py-4 text-xl font-bold text-brand-400 bg-brand-500/10 mt-8 rounded-xl border border-brand-500/20"
             >
-              Acessar Painel / Login
+              {user ? 'Acessar Painel' : 'Login / Entrar'}
             </button>
           </div>
         </div>
@@ -341,7 +351,6 @@ const ContactForm = () => {
 // Payment Modal Component
 const PaymentModal = ({ plan, isOpen, onClose, currentUser }: { plan: any, isOpen: boolean, onClose: () => void, currentUser: User | null }) => {
   const [loading, setLoading] = useState(false);
-  const [userEmail, setUserEmail] = useState('');
   
   // Estados para os Upsells
   const [includeHosting, setIncludeHosting] = useState(false);
@@ -352,13 +361,8 @@ const PaymentModal = ({ plan, isOpen, onClose, currentUser }: { plan: any, isOpe
     if (isOpen) {
         setIncludeHosting(false);
         setIncludeSupport(false);
-        if (currentUser) {
-            setUserEmail(currentUser.email);
-        } else {
-            setUserEmail('');
-        }
     }
-  }, [isOpen, currentUser]);
+  }, [isOpen]);
 
   if (!isOpen || !plan) return null;
 
@@ -369,22 +373,15 @@ const PaymentModal = ({ plan, isOpen, onClose, currentUser }: { plan: any, isOpe
   const total = plan.price + (includeHosting ? UPSALE_PRICE : 0) + (includeSupport ? supportPrice : 0);
 
   const handlePayment = async () => {
-    // Validação rigorosa do email
-    if (!userEmail || !userEmail.includes('@')) {
-        alert("Por favor, digite um e-mail válido para prosseguir com a compra.");
+    if (!currentUser) {
+        // Should not happen due to parent logic, but safety check
+        alert("Você precisa estar logado para continuar.");
         return;
     }
 
     setLoading(true);
-    const emailToUse = userEmail.trim();
 
     try {
-        // Se o usuário NÃO estiver logado, tenta criar conta/magic link
-        if (!currentUser) {
-            console.log("Usuário não logado. Registrando/Enviando Magic Link para:", emailToUse);
-            await loginWithEmail(emailToUse);
-        }
-
         // Processo de Checkout
         const response = await fetch('/api/checkout', {
             method: 'POST',
@@ -398,7 +395,7 @@ const PaymentModal = ({ plan, isOpen, onClose, currentUser }: { plan: any, isOpe
                 includeHosting: includeHosting,
                 includeSupport: includeSupport, 
                 includeSupportPrice: includeSupport ? supportPrice : 0, 
-                email: emailToUse
+                email: currentUser.email // Usa email do usuário logado
             }),
         });
 
@@ -476,19 +473,9 @@ const PaymentModal = ({ plan, isOpen, onClose, currentUser }: { plan: any, isOpe
           </div>
 
           <div className="space-y-4">
-              <div>
-                  <label className="block text-sm font-medium text-slate-400 mb-1">
-                      E-mail para envio do acesso: <span className="text-red-500">*</span>
-                  </label>
-                  <input 
-                     type="email" 
-                     placeholder="seu@email.com"
-                     className="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-3 text-white text-sm focus:ring-2 focus:ring-brand-500 outline-none disabled:opacity-60 disabled:cursor-not-allowed"
-                     value={userEmail}
-                     onChange={(e) => setUserEmail(e.target.value)}
-                     disabled={!!currentUser} 
-                  />
-                  {currentUser && <p className="text-xs text-slate-500 mt-1">Logado como {currentUser.name}</p>}
+              <div className="bg-slate-800 p-3 rounded-lg text-sm text-slate-300 flex items-center gap-2">
+                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                  Logado como: <span className="font-bold text-white">{currentUser?.email}</span>
               </div>
 
               <button 
@@ -496,7 +483,7 @@ const PaymentModal = ({ plan, isOpen, onClose, currentUser }: { plan: any, isOpe
                 disabled={loading}
                 className="w-full py-4 bg-brand-600 hover:bg-brand-500 text-white font-bold rounded-xl transition-all shadow-lg flex items-center justify-center gap-2 disabled:opacity-50 transform hover:-translate-y-1"
               >
-                {loading ? <Loader2 className="animate-spin" /> : `Finalizar Compra`}
+                {loading ? <Loader2 className="animate-spin" /> : `Ir para Pagamento`}
               </button>
           </div>
         </div>
@@ -508,116 +495,292 @@ const PaymentModal = ({ plan, isOpen, onClose, currentUser }: { plan: any, isOpe
 // --- AUTH COMPONENTS ---
 
 const LoginModal = ({ isOpen, onClose, onLogin }: any) => {
-  const [email, setEmail] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [sent, setSent] = useState(false);
-
   if (!isOpen) return null;
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    
-    const { error } = await loginWithEmail(email);
-
-    if (error) {
-      alert("Erro ao enviar login: " + error.message);
-      setLoading(false);
-    } else {
-      setSent(true);
-      setLoading(false);
-    }
-  };
-
   const handleGoogleLogin = async () => {
-    const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-            redirectTo: `${window.location.origin}`,
-        },
-    });
+    const { error } = await loginWithGoogle();
     if (error) alert(error.message);
   };
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/80 backdrop-blur-md" onClick={onClose}></div>
-      <div className="bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl w-full max-w-md p-8 relative z-10">
-        {sent ? (
-          <div className="text-center">
-            <div className="w-16 h-16 bg-green-500/10 rounded-full flex items-center justify-center text-green-500 mx-auto mb-4">
-               <Mail size={32} />
-            </div>
-            <h2 className="text-2xl font-bold mb-2 text-white">Verifique seu Email</h2>
-            <p className="text-slate-400 mb-6">Enviamos um link mágico de acesso para <strong>{email}</strong>.</p>
-            <button onClick={onClose} className="text-brand-400 font-bold hover:text-brand-300">Fechar</button>
-          </div>
-        ) : (
-          <>
-            <h2 className="text-2xl font-bold mb-6 text-white">Acesse sua Conta</h2>
-            <form onSubmit={handleSubmit} className="space-y-5">
-              <button 
-                type="button"
-                onClick={handleGoogleLogin}
-                className="w-full py-3 bg-white text-slate-900 rounded-lg font-bold hover:bg-slate-100 transition-colors flex items-center justify-center gap-2"
-              >
-                <svg className="w-5 h-5" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
-                Entrar com Google
-              </button>
-
-              <div className="flex items-center gap-4">
-                <div className="h-px bg-slate-700 flex-1"></div>
-                <span className="text-slate-500 text-sm">ou use seu email</span>
-                <div className="h-px bg-slate-700 flex-1"></div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-slate-400 mb-2">Email</label>
-                <input 
-                  type="email" 
-                  required
-                  className="w-full px-4 py-3 bg-slate-800 text-white rounded-lg border border-slate-700 focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none transition-all placeholder-slate-500"
-                  placeholder="seu@email.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                />
-                <p className="text-xs text-slate-500 mt-2">
-                  Enviaremos um link de acesso para o seu email. Não precisa de senha.
-                </p>
-              </div>
-              <button 
-                type="submit" 
-                disabled={loading}
-                className="w-full py-3 bg-brand-600 text-white rounded-lg font-bold hover:bg-brand-500 transition-colors disabled:opacity-50 shadow-lg shadow-brand-900/20 flex items-center justify-center gap-2"
-              >
-                {loading ? <Loader2 className="animate-spin" /> : 'Entrar na Plataforma'}
-              </button>
-            </form>
-          </>
-        )}
+      <div className="bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl w-full max-w-md p-8 relative z-10 text-center">
+        <div className="w-16 h-16 bg-brand-600/20 rounded-full flex items-center justify-center text-brand-500 mx-auto mb-6">
+            <Lock size={32} />
+        </div>
+        <h2 className="text-2xl font-bold mb-2 text-white">Login Necessário</h2>
+        <p className="text-slate-400 mb-8">Para continuar com a contratação, acesse sua conta ou cadastre-se gratuitamente.</p>
+        
+        <button 
+        type="button"
+        onClick={handleGoogleLogin}
+        className="w-full py-4 bg-white text-slate-900 rounded-xl font-bold hover:bg-slate-100 transition-all flex items-center justify-center gap-3 shadow-lg group"
+        >
+        <svg className="w-6 h-6" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
+        Continuar com Google
+        <ArrowRight size={18} className="text-slate-400 group-hover:translate-x-1 transition-transform"/>
+        </button>
+        
+        <p className="text-xs text-slate-500 mt-6">Ao continuar, você concorda com nossos Termos de Uso.</p>
       </div>
     </div>
   );
 };
 
-// --- LANDING PAGE ---
+// --- DASHBOARD COMPONENTS ---
+
+const DashboardLayout = ({ user, children, onLogout }: any) => {
+  return (
+    <div className="min-h-screen bg-slate-950 flex">
+      {/* Sidebar */}
+      <aside className="w-72 bg-slate-900 border-r border-slate-800 text-slate-300 flex-shrink-0 hidden md:flex flex-col">
+        <div className="p-8 border-b border-slate-800">
+           <div className="flex items-center gap-3">
+              <div className="w-8 h-8 bg-brand-600 rounded-lg flex items-center justify-center text-white font-bold">W</div>
+              <div className="font-bold text-2xl text-white">WebNova</div>
+           </div>
+           <div className="text-xs text-brand-400 font-medium mt-2 pl-11">Painel do Cliente</div>
+        </div>
+        
+        <div className="flex-grow p-4 space-y-2 overflow-y-auto">
+          <div className="px-4 py-2 text-xs font-bold uppercase text-slate-500 tracking-wider">Menu Principal</div>
+          
+          <button className="w-full flex items-center gap-3 px-4 py-3 text-white bg-brand-600/10 border border-brand-500/20 rounded-xl hover:bg-brand-600/20 transition-all">
+            <Layout size={20} className="text-brand-400" /> Visão Geral
+          </button>
+
+          <button onClick={onLogout} className="w-full flex items-center gap-3 px-4 py-3 text-slate-400 hover:text-white hover:bg-red-500/10 rounded-xl transition-all mt-auto">
+             <LogOut size={20} /> Sair
+          </button>
+        </div>
+
+        <div className="p-4 m-4 bg-slate-800/50 rounded-2xl border border-slate-800">
+          <div className="flex items-center gap-3">
+             <img src={user.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name || 'U')}&background=0ea5e9&color=fff`} className="w-10 h-10 rounded-full border border-slate-600" alt="avatar"/>
+             <div className="overflow-hidden">
+               <p className="text-sm font-bold text-white truncate">{user.name}</p>
+               <p className="text-xs text-slate-500 truncate">{user.email}</p>
+             </div>
+          </div>
+        </div>
+      </aside>
+
+      {/* Main Content */}
+      <main className="flex-1 flex flex-col min-w-0 overflow-hidden bg-slate-950 relative">
+        {/* Background Glow */}
+        <div className="absolute top-0 left-0 w-full h-96 bg-brand-900/10 blur-[100px] pointer-events-none"></div>
+
+        {/* Mobile Header */}
+        <header className="md:hidden bg-slate-900/80 backdrop-blur-md border-b border-slate-800 text-white p-4 flex justify-between items-center sticky top-0 z-20">
+          <span className="font-bold text-xl">WebNova</span>
+          <button onClick={onLogout}><LogOut size={20} /></button>
+        </header>
+
+        <div className="flex-1 overflow-auto p-6 md:p-10 relative z-10">
+           {children}
+        </div>
+      </main>
+    </div>
+  );
+};
+
+const DashboardHome = ({ user }: { user: User }) => {
+  
+  const handleServicePurchase = async (serviceType: 'domain' | 'hosting' | 'support', option: any) => {
+    // Lógica para iniciar compra de serviços avulsos
+    try {
+        const response = await fetch('/api/checkout', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                isAddon: true,
+                addonTitle: option.title,
+                addonPrice: option.price,
+                addonId: serviceType, // Identificador do tipo de serviço
+                email: user.email
+            }),
+        });
+
+        if (response.ok) {
+            const data = await response.json();
+            window.location.href = data.url;
+        } else {
+            alert("Erro ao gerar pagamento.");
+        }
+    } catch (error) {
+        console.error(error);
+        alert("Erro de conexão.");
+    }
+  };
+
+  // Verifica se pode comprar suporte (regra de negócio)
+  const canBuySupport = user.hosting?.active || user.domain?.active;
+  
+  // Calcula preço do suporte (se o plano existir)
+  const currentPlanPrice = PLANS.find(p => p.id === user.plan)?.price || 0;
+  const supportPrice = currentPlanPrice * VIP_SUPPORT_MULTIPLIER;
+
+  return (
+    <div className="space-y-8 max-w-6xl mx-auto">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+           <h1 className="text-3xl font-bold text-white mb-1">Olá, {user.name.split(' ')[0]} 👋</h1>
+           <p className="text-slate-400">Painel de Controle do seu Site</p>
+        </div>
+        <div className="inline-flex items-center px-4 py-2 bg-green-500/10 border border-green-500/20 text-green-400 rounded-full text-sm font-bold">
+           <span className="w-2 h-2 bg-green-500 rounded-full mr-2 shadow-[0_0_10px_rgba(34,197,94,0.5)]"></span>
+           Status: Ativo
+        </div>
+      </div>
+
+      {/* Status Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+         {/* Card 1: Plano */}
+         <div className="bg-slate-900 p-6 rounded-2xl shadow-lg border border-slate-800">
+            <div className="text-slate-400 text-xs font-bold uppercase mb-2">Plano Atual</div>
+            <div className="text-lg font-bold text-white truncate">{PLANS.find(p => p.id === user.plan)?.title || 'Admin'}</div>
+            <div className="mt-2 text-xs text-slate-500">Expira em: {new Date(user.planExpiry || '').toLocaleDateString('pt-BR')}</div>
+         </div>
+
+         {/* Card 2: Suporte */}
+         <div className="bg-slate-900 p-6 rounded-2xl shadow-lg border border-slate-800">
+            <div className="text-slate-400 text-xs font-bold uppercase mb-2">Suporte Técnico</div>
+            <div className="text-2xl font-bold text-white">
+                {user.supportTicketsRemaining === 'unlimited' ? 'Ilimitado' : `${user.supportTicketsRemaining} Restantes`}
+            </div>
+            {user.vipSupport?.active && <div className="mt-2 text-xs text-purple-400 font-bold">VIP Ativo até {new Date(user.vipSupport.expiryDate!).toLocaleDateString('pt-BR')}</div>}
+         </div>
+
+         {/* Card 3: Hospedagem */}
+         <div className="bg-slate-900 p-6 rounded-2xl shadow-lg border border-slate-800">
+            <div className="text-slate-400 text-xs font-bold uppercase mb-2">Hospedagem</div>
+            {user.hosting?.active ? (
+                <>
+                    <div className="text-lg font-bold text-green-400 flex items-center gap-2"><CheckCircle size={16}/> Ativa</div>
+                    <div className="mt-2 text-xs text-slate-500">Vence em: {new Date(user.hosting.expiryDate!).toLocaleDateString('pt-BR')}</div>
+                </>
+            ) : (
+                <div className="text-lg font-bold text-slate-500">Não contratado</div>
+            )}
+         </div>
+
+         {/* Card 4: Domínio */}
+         <div className="bg-slate-900 p-6 rounded-2xl shadow-lg border border-slate-800">
+            <div className="text-slate-400 text-xs font-bold uppercase mb-2">Domínio</div>
+            {user.domain?.active ? (
+                <>
+                    <div className="text-lg font-bold text-white truncate">{user.domain.domainName}</div>
+                    <div className="mt-2 text-xs text-slate-500">Vence em: {new Date(user.domain.expiryDate!).toLocaleDateString('pt-BR')}</div>
+                </>
+            ) : (
+                <div className="text-lg font-bold text-slate-500">Não contratado</div>
+            )}
+         </div>
+      </div>
+
+      <h3 className="text-2xl font-bold text-white pt-8">Contratação de Serviços Adicionais</h3>
+      
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          
+          {/* Hospedagem */}
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-8 flex flex-col">
+              <div className="flex items-center gap-3 mb-4">
+                  <div className="p-3 bg-amber-500/10 text-amber-500 rounded-xl"><Server size={24}/></div>
+                  <h4 className="text-xl font-bold text-white">Hospedagem Premium</h4>
+              </div>
+              <p className="text-sm text-slate-400 mb-8">Servidor de alta performance, SSL incluso e contas de e-mail.</p>
+              
+              <div className="space-y-3 mt-auto">
+                  {HOSTING_PRICES.map((opt) => (
+                      <button 
+                        key={opt.years}
+                        onClick={() => handleServicePurchase('hosting', { title: `Hospedagem Premium (${opt.years} Anos)`, price: opt.price })}
+                        className="w-full flex justify-between items-center p-4 rounded-xl border border-slate-700 hover:border-amber-500/50 hover:bg-amber-500/5 transition-all group"
+                      >
+                          <span className="text-sm font-medium text-slate-300">{opt.label} (+{opt.supportsBonus} suportes)</span>
+                          <span className="font-bold text-white group-hover:text-amber-400">R$ {opt.price.toFixed(2)}</span>
+                      </button>
+                  ))}
+              </div>
+          </div>
+
+          {/* Domínio */}
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-8 flex flex-col">
+              <div className="flex items-center gap-3 mb-4">
+                  <div className="p-3 bg-pink-500/10 text-pink-500 rounded-xl"><Globe size={24}/></div>
+                  <h4 className="text-xl font-bold text-white">Domínio Personalizado</h4>
+              </div>
+              <p className="text-sm text-slate-400 mb-8">Registre sua marca na internet (.com.br ou .com).</p>
+              
+              <div className="space-y-3 mt-auto">
+                  {DOMAIN_PRICES.map((opt) => (
+                      <button 
+                        key={opt.years}
+                        onClick={() => handleServicePurchase('domain', { title: `Registro de Domínio (${opt.years} Anos)`, price: opt.price })}
+                        className="w-full flex justify-between items-center p-4 rounded-xl border border-slate-700 hover:border-pink-500/50 hover:bg-pink-500/5 transition-all group"
+                      >
+                          <span className="text-sm font-medium text-slate-300">{opt.label} (+{opt.supportsBonus} suportes)</span>
+                          <span className="font-bold text-white group-hover:text-pink-400">R$ {opt.price.toFixed(2)}</span>
+                      </button>
+                  ))}
+              </div>
+          </div>
+
+          {/* Suporte VIP */}
+          <div className={`bg-slate-900 border border-slate-800 rounded-3xl p-8 flex flex-col relative ${!canBuySupport ? 'opacity-60' : ''}`}>
+              <div className="flex items-center gap-3 mb-4">
+                  <div className="p-3 bg-purple-500/10 text-purple-500 rounded-xl"><LifeBuoy size={24}/></div>
+                  <h4 className="text-xl font-bold text-white">Suporte VIP Ilimitado</h4>
+              </div>
+              <p className="text-sm text-slate-400 mb-8">Atendimento prioritário para ajustes no seu site.</p>
+              
+              {!canBuySupport && (
+                  <div className="absolute inset-0 bg-slate-950/60 backdrop-blur-[2px] z-10 flex flex-col items-center justify-center text-center p-6 rounded-3xl border border-slate-700/50">
+                      <Lock size={32} className="text-slate-400 mb-2"/>
+                      <span className="font-bold text-white text-lg">Bloqueado</span>
+                      <span className="text-xs text-slate-400">Contrate Hospedagem ou Domínio para liberar.</span>
+                  </div>
+              )}
+
+              <div className="mt-auto">
+                  <div className="mb-4 p-4 bg-slate-800 rounded-xl">
+                      <span className="text-xs text-slate-500 block mb-1">Preço Exclusivo (75% do plano):</span>
+                      <span className="text-2xl font-bold text-white">R$ {supportPrice.toFixed(2)}</span>
+                  </div>
+                  <button 
+                    disabled={!canBuySupport}
+                    onClick={() => handleServicePurchase('support', { title: `Suporte VIP Ilimitado`, price: supportPrice })}
+                    className="w-full py-4 bg-purple-600 hover:bg-purple-500 text-white font-bold rounded-xl transition-all shadow-lg shadow-purple-900/20"
+                  >
+                      Contratar Agora
+                  </button>
+              </div>
+          </div>
+
+      </div>
+    </div>
+  );
+};
+
+// --- MAIN LANDING PAGE ---
 
 const LandingPage = ({ onPlanSelect, onLoginClick }: { onPlanSelect: (plan: any) => void, onLoginClick: () => void }) => {
-  
   const scrollTo = (id: string) => {
     const el = document.getElementById(id);
     if (el) el.scrollIntoView({ behavior: 'smooth' });
   };
 
-  // Testimonials Logic
   const [currentIndex, setCurrentIndex] = useState(0);
   const [itemsToShow, setItemsToShow] = useState(3);
 
   useEffect(() => {
     const handleResize = () => {
-      if (window.innerWidth < 768) setItemsToShow(1);
-      else if (window.innerWidth < 1024) setItemsToShow(2);
-      else setItemsToShow(3);
+      if (typeof window !== 'undefined') {
+        if (window.innerWidth < 768) setItemsToShow(1);
+        else if (window.innerWidth < 1024) setItemsToShow(2);
+        else setItemsToShow(3);
+      }
     };
     handleResize();
     window.addEventListener('resize', handleResize);
@@ -641,7 +804,7 @@ const LandingPage = ({ onPlanSelect, onLoginClick }: { onPlanSelect: (plan: any)
 
   return (
     <div className="min-h-screen flex flex-col bg-dark-950 text-slate-50">
-      <Navbar onLoginClick={onLoginClick} onScrollTo={scrollTo} />
+      <Navbar onLoginClick={onLoginClick} onScrollTo={scrollTo} user={null} />
       
       <Hero onCtaClick={() => scrollTo('planos')} />
 
@@ -854,305 +1017,11 @@ const LandingPage = ({ onPlanSelect, onLoginClick }: { onPlanSelect: (plan: any)
               </a>
             </div>
           </div>
-          <div>
-            <h4 className="font-bold text-white mb-6 text-lg">Empresa</h4>
-            <ul className="space-y-4 text-sm text-slate-400">
-              <li><button onClick={() => scrollTo('quem-somos')} className="hover:text-brand-400 transition-colors">Quem Somos</button></li>
-              <li><button onClick={() => scrollTo('vantagens')} className="hover:text-brand-400 transition-colors">Vantagens</button></li>
-              <li><button onClick={() => scrollTo('planos')} className="hover:text-brand-400 transition-colors">Preços</button></li>
-            </ul>
-          </div>
-          <div>
-            <h4 className="font-bold text-white mb-6 text-lg">Contato</h4>
-            <ul className="space-y-4 text-sm text-slate-400">
-              <li className="flex items-center gap-3">
-                <Smartphone size={18} className="text-brand-500" /> {CONTACT_PHONE_DISPLAY}
-              </li>
-              <li className="flex items-center gap-3">
-                <Globe size={18} className="text-brand-500" /> Florianópolis, SC
-              </li>
-            </ul>
-            <a 
-              href={`https://wa.me/${CONTACT_WHATSAPP}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="mt-6 inline-flex items-center gap-2 bg-green-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-green-500 transition-all shadow-lg shadow-green-900/20"
-            >
-              <MessageSquare size={18} /> Falar agora
-            </a>
-          </div>
         </div>
         <div className="border-t border-slate-900 pt-8 text-center text-sm text-slate-600">
           © {new Date().getFullYear()} WebNova. Todos os direitos reservados.
         </div>
       </footer>
-    </div>
-  );
-};
-
-// --- DASHBOARD COMPONENTS ---
-
-const DashboardLayout = ({ user, children, onLogout }: any) => {
-  return (
-    <div className="min-h-screen bg-slate-950 flex">
-      <aside className="w-72 bg-slate-900 border-r border-slate-800 text-slate-300 flex-shrink-0 hidden md:flex flex-col">
-        <div className="p-8 border-b border-slate-800">
-           <div className="flex items-center gap-3">
-              <div className="w-8 h-8 bg-brand-600 rounded-lg flex items-center justify-center text-white font-bold">W</div>
-              <div className="font-bold text-2xl text-white">WebNova</div>
-           </div>
-           <div className="text-xs text-brand-400 font-medium mt-2 pl-11">Painel do Cliente</div>
-        </div>
-        
-        <div className="flex-grow p-4 space-y-2">
-          <button className="w-full flex items-center gap-3 px-4 py-3 text-white bg-brand-600/10 border border-brand-500/20 rounded-xl hover:bg-brand-600/20 transition-all">
-            <Layout size={20} className="text-brand-400" /> Visão Geral
-          </button>
-        </div>
-
-        <div className="p-4 m-4 bg-slate-800/50 rounded-2xl border border-slate-800">
-          <div className="flex items-center gap-3 mb-4">
-             <img src={user.avatarUrl} className="w-10 h-10 rounded-full border border-slate-600" alt="avatar"/>
-             <div className="overflow-hidden">
-               <p className="text-sm font-bold text-white truncate">{user.name}</p>
-               <p className="text-xs text-slate-500 truncate">{user.email}</p>
-             </div>
-          </div>
-          <button onClick={onLogout} className="w-full py-2 flex items-center justify-center gap-2 text-sm text-red-400 hover:bg-red-500/10 rounded-lg transition-all">
-            <LogOut size={16} /> Sair
-          </button>
-        </div>
-      </aside>
-
-      <main className="flex-1 flex flex-col min-w-0 overflow-hidden bg-slate-950 relative">
-        <div className="absolute top-0 left-0 w-full h-96 bg-brand-900/10 blur-[100px] pointer-events-none"></div>
-
-        <header className="md:hidden bg-slate-900/80 backdrop-blur-md border-b border-slate-800 text-white p-4 flex justify-between items-center sticky top-0 z-20">
-          <span className="font-bold text-xl">WebNova</span>
-          <button onClick={onLogout}><LogOut size={20} /></button>
-        </header>
-
-        <div className="flex-1 overflow-auto p-6 md:p-10 relative z-10">
-           {children}
-        </div>
-      </main>
-    </div>
-  );
-};
-
-const DashboardHome = ({ user }: { user: User }) => {
-  const currentPlanDetails = PLANS.find(p => p.id === user.plan);
-  const planPrice = currentPlanDetails?.price || 0;
-  const calculatedSupportPrice = planPrice * VIP_SUPPORT_MULTIPLIER;
-  const hasHostingOrDomain = user.hosting?.active || user.domain?.active;
-  const [loadingButton, setLoadingButton] = useState<string | null>(null);
-
-  const handleServicePurchase = async (serviceType: 'hosting' | 'domain' | 'support', years: number = 1, price: number, label: string) => {
-    const buttonId = `${serviceType}-${years}`;
-    setLoadingButton(buttonId);
-
-    try {
-        const response = await fetch('/api/checkout', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                isAddon: true, // Flag importante
-                addonId: serviceType,
-                addonTitle: serviceType === 'support' 
-                    ? `Suporte VIP Ilimitado (Vinculado)` 
-                    : `${serviceType === 'hosting' ? 'Hospedagem' : 'Domínio'} - ${label}`,
-                addonPrice: price,
-                email: user.email,
-            }),
-        });
-
-        if (response.ok) {
-            const data = await response.json();
-            window.location.href = data.url;
-        } else {
-            const error = await response.json();
-            alert(`Erro ao gerar pagamento: ${error.details || error.error}`);
-        }
-    } catch (err) {
-        alert('Erro de conexão. Tente novamente.');
-    } finally {
-        setLoadingButton(null);
-    }
-  };
-
-  return (
-    <div className="space-y-8 max-w-6xl mx-auto">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-           <h1 className="text-3xl font-bold text-white mb-1">Olá, {user.name.split(' ')[0]} 👋</h1>
-           <p className="text-slate-400">Confira a situação dos seus serviços contratados.</p>
-        </div>
-        <div className="inline-flex items-center px-4 py-2 bg-green-500/10 border border-green-500/20 text-green-400 rounded-full text-sm font-bold">
-           <span className="w-2 h-2 bg-green-500 rounded-full mr-2 shadow-[0_0_10px_rgba(34,197,94,0.5)]"></span>
-           Status: Site Ativo
-        </div>
-      </div>
-
-      {/* STATS GRID: Plano, Suporte, Hospedagem, Domínio */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-         {/* PLANO */}
-         <div className="bg-slate-900 p-6 rounded-2xl shadow-lg border border-slate-800 hover:border-slate-700 transition-colors">
-            <div className="flex justify-between items-start mb-4">
-               <div className="p-2 bg-blue-500/10 rounded-lg text-blue-400">
-                  <ShieldCheck size={24} />
-               </div>
-            </div>
-            <div className="text-slate-400 text-sm font-medium mb-1">Plano Atual</div>
-            <div className="text-xl font-bold text-white truncate">{currentPlanDetails?.title || 'Admin'}</div>
-            <div className="mt-4 text-xs text-slate-500">Expira em: {new Date(user.planExpiry || '').toLocaleDateString('pt-BR')}</div>
-         </div>
-
-         {/* SUPORTE */}
-         <div className="bg-slate-900 p-6 rounded-2xl shadow-lg border border-slate-800 hover:border-slate-700 transition-colors">
-            <div className="flex justify-between items-start mb-4">
-               <div className="p-2 bg-purple-500/10 rounded-lg text-purple-400">
-                  <MessageSquare size={24} />
-               </div>
-            </div>
-            <div className="text-slate-400 text-sm font-medium mb-1">Suportes Restantes</div>
-            <div className="text-2xl font-bold text-white">
-                {user.supportTicketsRemaining === 'unlimited' ? 'Ilimitado' : user.supportTicketsRemaining}
-            </div>
-            <div className="mt-4 text-xs font-bold">
-                {user.vipSupport?.active ? <span className="text-green-400">VIP Ativado</span> : <span className="text-slate-500">Padrão</span>}
-            </div>
-         </div>
-
-         {/* HOSPEDAGEM */}
-         <div className="bg-slate-900 p-6 rounded-2xl shadow-lg border border-slate-800 hover:border-slate-700 transition-colors">
-            <div className="flex justify-between items-start mb-4">
-               <div className="p-2 bg-amber-500/10 rounded-lg text-amber-400">
-                  <Server size={24} />
-               </div>
-               {user.hosting?.active && <span className="text-green-400 text-xs font-bold bg-green-500/10 px-2 py-1 rounded">Ativo</span>}
-            </div>
-            <div className="text-slate-400 text-sm font-medium mb-1">Hospedagem</div>
-            <div className="text-xl font-bold text-white">
-                {user.hosting?.active ? `${user.hosting.planYears} Ano(s)` : 'Não contratado'}
-            </div>
-            {user.hosting?.active && (
-                <div className="mt-4 text-xs text-slate-500">Renova em: {new Date(user.hosting.expiryDate || '').toLocaleDateString('pt-BR')}</div>
-            )}
-         </div>
-
-         {/* DOMÍNIO */}
-         <div className="bg-slate-900 p-6 rounded-2xl shadow-lg border border-slate-800 hover:border-slate-700 transition-colors">
-            <div className="flex justify-between items-start mb-4">
-               <div className="p-2 bg-pink-500/10 rounded-lg text-pink-400">
-                  <Globe size={24} />
-               </div>
-               {user.domain?.active && <span className="text-green-400 text-xs font-bold bg-green-500/10 px-2 py-1 rounded">Ativo</span>}
-            </div>
-            <div className="text-slate-400 text-sm font-medium mb-1">Domínio</div>
-            <div className="text-xl font-bold text-white truncate">
-                {user.domain?.active ? (user.domain.domainName || 'Seu Domínio') : 'Não contratado'}
-            </div>
-            {user.domain?.active && (
-                <div className="mt-4 text-xs text-slate-500">Expira em: {new Date(user.domain.expiryDate || '').toLocaleDateString('pt-BR')}</div>
-            )}
-         </div>
-      </div>
-
-      <h2 className="text-2xl font-bold text-white mt-8 mb-4">Contratação de Serviços Adicionais</h2>
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-         
-         {/* CARD HOSPEDAGEM */}
-         <div className="bg-slate-800/50 border border-slate-700 rounded-2xl p-6 flex flex-col">
-            <div className="flex items-center gap-3 mb-4">
-                <div className="p-3 rounded-full bg-amber-500/10 text-amber-500"><Server size={24}/></div>
-                <h3 className="font-bold text-lg text-white">Hospedagem Premium</h3>
-            </div>
-            <p className="text-sm text-slate-400 mb-6">Servidor de alta performance, SSL incluso e contas de e-mail.</p>
-            
-            <div className="space-y-3 mt-auto">
-                {HOSTING_PRICES.map((opt) => (
-                    <button 
-                        key={opt.years} 
-                        onClick={() => handleServicePurchase('hosting', opt.years, opt.price, opt.label)}
-                        disabled={!!loadingButton}
-                        className="w-full flex justify-between items-center p-3 rounded-xl border border-slate-700 hover:border-amber-500 hover:bg-amber-500/5 transition-all group disabled:opacity-50"
-                    >
-                        <span className="text-sm font-medium text-slate-300 group-hover:text-white">{opt.label} (+{opt.supportsBonus} suportes)</span>
-                        <span className="font-bold text-white">
-                            {loadingButton === `hosting-${opt.years}` ? <Loader2 className="animate-spin h-4 w-4" /> : `R$ ${opt.price.toFixed(2)}`}
-                        </span>
-                    </button>
-                ))}
-            </div>
-         </div>
-
-         {/* CARD DOMÍNIO */}
-         <div className="bg-slate-800/50 border border-slate-700 rounded-2xl p-6 flex flex-col">
-            <div className="flex items-center gap-3 mb-4">
-                <div className="p-3 rounded-full bg-pink-500/10 text-pink-500"><Globe size={24}/></div>
-                <h3 className="font-bold text-lg text-white">Domínio Personalizado</h3>
-            </div>
-            <p className="text-sm text-slate-400 mb-6">Registre sua marca na internet (.com.br ou .com).</p>
-            
-            <div className="space-y-3 mt-auto">
-                {DOMAIN_PRICES.map((opt) => (
-                    <button 
-                        key={opt.years} 
-                        onClick={() => handleServicePurchase('domain', opt.years, opt.price, opt.label)}
-                        disabled={!!loadingButton}
-                        className="w-full flex justify-between items-center p-3 rounded-xl border border-slate-700 hover:border-pink-500 hover:bg-pink-500/5 transition-all group disabled:opacity-50"
-                    >
-                        <span className="text-sm font-medium text-slate-300 group-hover:text-white">{opt.label} (+{opt.supportsBonus} suportes)</span>
-                        <span className="font-bold text-white">
-                            {loadingButton === `domain-${opt.years}` ? <Loader2 className="animate-spin h-4 w-4" /> : `R$ ${opt.price.toFixed(2)}`}
-                        </span>
-                    </button>
-                ))}
-            </div>
-         </div>
-
-         {/* CARD SUPORTE VIP (BLOQUEADO SE NÃO TIVER HOSPEDAGEM/DOMINIO) */}
-         <div className={`border rounded-2xl p-6 flex flex-col relative overflow-hidden ${!hasHostingOrDomain ? 'bg-slate-900 border-slate-800 opacity-75' : 'bg-slate-800/50 border-slate-700'}`}>
-            {!hasHostingOrDomain && (
-                <div className="absolute inset-0 bg-slate-950/60 backdrop-blur-[2px] flex flex-col items-center justify-center text-center p-4 z-20">
-                    <Lock size={32} className="text-slate-500 mb-2" />
-                    <p className="text-sm font-bold text-slate-400">Bloqueado</p>
-                    <p className="text-xs text-slate-500 mt-1">Contrate Hospedagem ou Domínio para liberar.</p>
-                </div>
-            )}
-            
-            <div className="flex items-center gap-3 mb-4">
-                <div className="p-3 rounded-full bg-purple-500/10 text-purple-500"><LifeBuoy size={24}/></div>
-                <h3 className="font-bold text-lg text-white">Suporte VIP Ilimitado</h3>
-            </div>
-            <p className="text-sm text-slate-400 mb-4">Atendimento prioritário para ajustes no seu site.</p>
-            
-            <div className="bg-purple-500/10 border border-purple-500/20 rounded-xl p-4 mb-6">
-                <p className="text-xs text-purple-300 mb-1">Preço Exclusivo (75% do plano):</p>
-                <div className="text-2xl font-bold text-white">R$ {calculatedSupportPrice.toFixed(2)}</div>
-                <p className="text-[10px] text-slate-500 mt-1">Validade igual ao menor período de hospedagem/domínio.</p>
-            </div>
-
-            <button 
-                disabled={!hasHostingOrDomain || !!loadingButton}
-                onClick={() => handleServicePurchase('support', 1, calculatedSupportPrice, 'VIP')}
-                className="mt-auto w-full py-3 bg-purple-600 hover:bg-purple-500 text-white font-bold rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-            >
-                {loadingButton === 'support-1' ? <Loader2 className="animate-spin h-5 w-5" /> : 'Contratar Agora'}
-            </button>
-         </div>
-
-      </div>
-
-      <div className="bg-slate-900/50 border border-slate-800 rounded-2xl p-6 flex items-center justify-between mt-8">
-         <div>
-            <h3 className="font-bold text-white mb-1">Precisa de ajuda?</h3>
-            <p className="text-sm text-slate-400">Nossa equipe está pronta para te atender.</p>
-         </div>
-         <a href={`https://wa.me/${CONTACT_WHATSAPP}`} target="_blank" rel="noreferrer" className="px-6 py-3 bg-green-600 hover:bg-green-500 text-white rounded-xl font-bold transition-all flex items-center gap-2">
-           <MessageSquare size={18} /> WhatsApp
-         </a>
-      </div>
     </div>
   );
 };
@@ -1178,12 +1047,9 @@ export default function Home() {
 
     const initSession = async () => {
       try {
-        const timeoutPromise = new Promise(resolve => setTimeout(resolve, 3000));
-        const userPromise = getCurrentUser();
-        const user = await Promise.race([userPromise, timeoutPromise]) as User | null | undefined;
-
+        const user = await getCurrentUser();
         if (mounted) {
-          setCurrentUser(user && 'id' in user ? user : null);
+          setCurrentUser(user);
           setLoadingSession(false);
         }
       } catch (error) {
@@ -1210,13 +1076,16 @@ export default function Home() {
   }, []);
 
   const handlePlanSelect = (plan: any) => {
+    if (!currentUser) {
+      setIsLoginOpen(true);
+      return;
+    }
     setSelectedPlan(plan);
     setIsPaymentModalOpen(true);
   };
 
   const handleLogout = async () => {
     setCurrentUser(null);
-    setLoadingSession(false); 
     try {
         await logout();
     } catch (error) {

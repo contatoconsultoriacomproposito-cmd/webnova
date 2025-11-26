@@ -31,29 +31,12 @@ const mapProfileToUser = (profile: any, authId: string, email: string): User => 
   };
 };
 
-export const loginWithEmail = async (email: string) => {
-  // URL FIXADA DA VERCEL PARA PRODUÇÃO
-  // Garante que o link mágico sempre volte para o site oficial, evitando localhost
-  const redirectTo = 'https://webnova-seven.vercel.app';
-
-  // Login via Magic Link (Email sem senha)
-  const { data, error } = await supabase.auth.signInWithOtp({
-    email,
-    options: {
-      emailRedirectTo: redirectTo, 
-      shouldCreateUser: true,
-      data: {
-        full_name: email.split('@')[0],
-        avatar_url: '',
-      }
-    }
-  });
-  return { data, error };
-};
-
 export const loginWithGoogle = async () => {
-    // URL FIXADA DA VERCEL PARA PRODUÇÃO
-    const redirectTo = 'https://webnova-seven.vercel.app';
+    // Usa a origem atual do navegador (localhost ou vercel) dinamicamente
+    let redirectTo = 'http://localhost:3000';
+    if (typeof window !== 'undefined') {
+      redirectTo = window.location.origin;
+    }
 
     const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
@@ -83,7 +66,7 @@ export const getCurrentUser = async (): Promise<User | null> => {
 
   if (error || !profile) {
     console.error('Erro ao buscar perfil:', error);
-    // Se tiver sessão mas não tiver perfil (erro raro, mas possível), tenta retornar um usuário básico
+    // Fallback para usuário básico se o perfil não carregar
     return {
         id: session.user.id,
         name: session.user.user_metadata.full_name || session.user.email?.split('@')[0] || 'Usuário',

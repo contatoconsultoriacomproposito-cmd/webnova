@@ -8,9 +8,7 @@ export const metadata: Metadata = {
   title: "WebNova - Criação de Sites Premium",
   description: "Transforme sua presença digital com sites de alta performance.",
   verification: {
-    // 💡 A chave 'google' aceita o token de verificação como string.
-    // O Next.js irá renderizar isso como: <meta name="google-site-verification" content="..." />
-    google: "0KG0zKsqFRDAImaL87ddciTf_RINgkewzJWB3B5W0V0", 
+    google: "0KG0zKsqFRDAImaL87ddciTf_RINgkewzJWB3B5W0V0",
   },
 };
 
