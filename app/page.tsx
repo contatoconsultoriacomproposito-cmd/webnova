@@ -721,31 +721,31 @@ export default function Home() {
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const mounted = useRef(true);
 
-  useEffect(() => {
-    const fetchUser = async () => {
-        const user = await getCurrentUser();
-        if (mounted.current) {
-            // LÓGICA DE REDIRECIONAMENTO MODIFICADA:
-            // Redireciona APENAS se estiver logado E NÃO for para ignorar a autenticação
+  // ARQUIVO: app/page.tsx - Dentro de export default function Home()
+
+useEffect(() => {
+      // ... (fetchUser - Mantenha este bloco)
+      const fetchUser = async () => {
+          const user = await getCurrentUser();
+          // REMOVA QUALQUER REDIRECIONAMENTO OU CHECAGEM DE user AQUI
+          if (mounted.current) setCurrentUser(user);
+          if (mounted.current) setLoadingSession(false);
+      };
+      fetchUser();
+      
+      // Mantenha o onAuthStateChange APENAS para o redirect após SIGNED_IN
+      const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+        if (_event === 'SIGNED_IN' && session) {
+          // ESSA LINHA É CRUCIAL PARA O LOGIN GOOGLE/OAUTH
+          redirect('/app');
         }
-        if (mounted.current) setCurrentUser(user); // Define o usuário para o caso de bypass, mas ele não será usado
-        if (mounted.current) setLoadingSession(false);
-    };
+      });
 
-    fetchUser();
- 
-    // Monitoramento da sessão:
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (_event === 'SIGNED_IN' && session) {
-        // Redireciona APÓS LOGIN (via modal/pop-up)
-        redirect('/app');
-      }
-    });
-
-    return () => {
-      mounted.current = false;
-      subscription.unsubscribe();
-    };
+      return () => {
+        mounted.current = false;
+        subscription.unsubscribe();
+      };
+      // Mantenha a array de dependências vazia, [], se não estiver usando bypassAuth como dependência.
   }, []);
 
   const handlePlanSelect = (plan: any) => {
