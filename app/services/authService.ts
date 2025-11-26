@@ -8,8 +8,8 @@ const mapProfileToUser = (profile: any, authId: string, email: string): User => 
     name: profile.full_name || 'Usuário',
     email: email,
     // CORREÇÃO (Problemas 1 e 2): Se o perfil não tiver role, OU se o role for
-    // o valor padrão 'INSTITUCIONAL' (que ainda não foi pago), forçamos para NO_PLAN.
-    plan: (!profile.role || profile.role === PlanType.INSTITUTIONAL) // Usei PlanType.INSTITUTIONAL, conforme types.ts
+    // o valor padrão 'NO_PLAN' (que ainda não foi pago), forçamos para NO_PLAN.
+    plan: (!profile.role || profile.role === PlanType.NO_PLAN) // Usei PlanType.NO_PLANL, conforme types.ts
         ? PlanType.NO_PLAN
         : (profile.role as PlanType),
     planExpiry: profile.plan_expiry, // Agora pode vir nulo
