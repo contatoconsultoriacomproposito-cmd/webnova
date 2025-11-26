@@ -10,6 +10,9 @@ import { loginWithGoogle, getCurrentUser, logout } from './services/authService'
 import { supabase } from './supabaseClient';
 import { useRouter } from 'next/navigation';
 
+// ✅ NOVO: Define o bypass fora do useEffect
+    const bypassAuth = typeof window !== 'undefined' ? window.location.search.includes('bypassAuth=true') : false;
+
 
 // --- COMPONENTES VISUAIS (NAVBAR, HERO, ETC) ---
 
@@ -716,18 +719,11 @@ export default function Home() {
 
     // Lógica de autenticação
     useEffect(() => {
-        const bypassAuth = window.location.search.includes('bypassAuth=true');
-
         // 1. Busca usuário atual
         const fetchUser = async () => {
             const user = await getCurrentUser();
             if (mounted.current) {
-                // ✅ REDIRECIONAMENTO CRÍTICO NA CARGA INICIAL
-                if (user && !bypassAuth) {
-                    router.replace('/app');
-                    return; // Interrompe a execução
-                }
-                
+                // A verificação de redirecionamento agora é feita no corpo principal.
                 setCurrentUser(user);
                 setLoadingSession(false);
             }
@@ -740,7 +736,7 @@ export default function Home() {
             (_event, session) => {
                 if (!mounted.current) return;
 
-                // ✅ REDIRECIONAMENTO APÓS NOVO LOGIN
+                // ✅ MANTEMOS O REDIRECIONAMENTO APÓS NOVO LOGIN
                 if (_event === 'SIGNED_IN' && session) {
                     router.replace('/app');
                 }
@@ -758,6 +754,10 @@ export default function Home() {
         };
     }, [router]);
 
+
+    // =======================================================
+    // ✅ CORREÇÃO: Função handlePlanSelect (ESTAVA FALTANDO!)
+    // =======================================================
     const handlePlanSelect = (plan: any) => {
         if (!currentUser) {
             setIsLoginOpen(true);
@@ -767,7 +767,12 @@ export default function Home() {
         setIsPaymentModalOpen(true);
     };
 
-    // ✅ LOADING STATE
+
+    // -------------------------------------------------------
+    // INÍCIO DO FLUXO DE RENDERIZAÇÃO E REDIRECIONAMENTO
+    // -------------------------------------------------------
+
+    // 1. LOADING STATE
     if (loadingSession) {
         return (
             <div className="min-h-screen bg-slate-950 flex items-center justify-center">
@@ -776,10 +781,15 @@ export default function Home() {
         );
     }
 
-    // ✅ RENDERIZA A LANDING PAGE (se não houve redirecionamento)
+    // 2. REDIRECIONAMENTO (CORREÇÃO DO LOOP): Se o usuário está logado E não está em modo bypass, redireciona E para a renderização.
+    if (currentUser && !bypassAuth) {
+        router.replace('/app'); 
+        return null; // CRUCIAL: Interrompe imediatamente qualquer renderização do componente Home.
+    }
+
+    // 3. RENDERIZAÇÃO NORMAL: Se não está logado OU se está em bypass, renderiza a Landing Page.
     return (
         <>
-            {/* ESTE TRECHO ESTÁ CORRETO E SEM O customContent */}
             <Navbar 
                 onLoginClick={() => setIsLoginOpen(true)} 
                 onScrollTo={(id) => {
@@ -790,7 +800,7 @@ export default function Home() {
             />
             
             <LandingPage 
-                onPlanSelect={handlePlanSelect} 
+                onPlanSelect={handlePlanSelect} // ✅ Agora handlePlanSelect existe!
                 onLoginClick={() => setIsLoginOpen(true)}
             />
             
