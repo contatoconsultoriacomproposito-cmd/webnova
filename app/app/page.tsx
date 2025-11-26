@@ -8,7 +8,33 @@ import { PlanType, User } from '../types';
 import { PLANS, CONTACT_PHONE_DISPLAY, CONTACT_WHATSAPP, TESTIMONIALS, PROCESS_STEPS, UPSALE_PRICE, VIP_SUPPORT_MULTIPLIER, DOMAIN_PRICES, HOSTING_PRICES } from '../constants';
 import { loginWithGoogle, getCurrentUser, logout } from '../services/authService';
 import { supabase } from '../supabaseClient';
-import { redirect, useRouter } from 'next/navigation'; // <-- ADICIONADO useRouter AQUI
+import { redirect, useRouter } from 'next/navigation';
+
+// =======================================================
+// ⚠️ ATENÇÃO: VOCÊ PRECISA IMPORTAR O SEU LoginModal AQUI
+// Escolha o caminho correto do seu componente de LoginModal:
+// Exemplo:
+// import LoginModal from '../../components/LoginModal'; 
+// =======================================================
+
+// --- COMPONENTE MOCK DO LoginModal (Apenas para fazer a compilação funcionar se você não tiver o arquivo) ---
+// SE VOCÊ IMPORTAR ACIMA, PODE APAGAR ESTE BLOCO
+const LoginModal = ({ isOpen, onClose, onLogin }: { isOpen: boolean, onClose: () => void, onLogin: (user: User) => void }) => {
+    if (!isOpen) return null;
+    return (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center p-4">
+            <div className="absolute inset-0 bg-black/80 backdrop-blur-md" onClick={onClose}></div>
+            <div className="bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl w-full max-w-sm p-8 relative z-10 text-center text-white">
+                <h2 className="text-2xl font-bold mb-4">Login Necessário</h2>
+                <p className="mb-4 text-slate-400">Componente de Login Real Faltando</p>
+                <button onClick={() => onLogin({} as User)} className="mt-6 px-6 py-2 bg-brand-600 rounded-lg">Fazer Login Mock</button>
+                <button onClick={onClose} className="mt-2 px-6 py-2 text-slate-400">Cancelar</button>
+            </div>
+        </div>
+    );
+};
+// -----------------------------------------------------------------------------------------------------------
+
 
 // --- DASHBOARD COMPONENTS ---
 
@@ -470,42 +496,58 @@ const PaymentModal = ({ plan, isOpen, onClose, currentUser }: { plan: any, isOpe
 };
 
 
-// Este é o componente principal da nova rota /app
-// ARQUIVO: app/app/page.tsx
+// --- NOVO COMPONENTE: AccessDenied ---
+const AccessDenied = ({ onLoginClick }: { onLoginClick: () => void }) => (
+    <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-8 text-center">
+        <Lock size={48} className="text-red-500 mb-4" />
+        <h1 className="text-3xl font-bold text-white mb-2">Acesso Restrito</h1>
+        <p className="text-slate-400 mb-6">Você precisa estar logado para acessar o Painel do Cliente.</p>
+        <button 
+            onClick={onLoginClick}
+            className="px-8 py-3 bg-brand-600 text-white rounded-xl font-bold hover:bg-brand-700 transition-all shadow-lg flex items-center gap-2"
+        >
+            <LogOut size={20} className="rotate-180"/> Entrar no Painel
+        </button>
+        <a href="/" className="mt-4 text-sm text-slate-500 hover:text-slate-300 transition-colors">
+            Voltar para o site público
+        </a>
+    </div>
+);
+
 
 export default function AppHome() {
-    const router = useRouter(); // <-- CORREÇÃO 1: Inicializa o router do cliente
+    const router = useRouter(); 
     const [currentUser, setCurrentUser] = useState<User | null>(null);
     const [loadingSession, setLoadingSession] = useState(true);
     const [selectedPlan, setSelectedPlan] = useState<any>(null);
     const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
-    const mounted = useRef(true); // Adicionei useRef para evitar warning no useEffect
+    const [isLoginOpen, setIsLoginOpen] = useState(false); 
+    const mounted = useRef(true);
 
     // Lógica de autenticação
     useEffect(() => {
-        
         const fetchUser = async () => {
             const user = await getCurrentUser();
             if (mounted.current) {
-                if (user) {
-                    setCurrentUser(user);
-                }
+                setCurrentUser(user);
+                setLoadingSession(false);
             }
-            if (mounted.current) setLoadingSession(false);
         };
 
         fetchUser();
 
-        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-            if (_event === 'SIGNED_IN' && session) {
-                getCurrentUser().then(user => {
-                    if(mounted.current && user) setCurrentUser(user);
-                });
+        // Escuta mudanças de autenticação (simplificado)
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(
+            (_event, session) => {
+                if (!mounted.current) return;
+                // Apenas atualiza o estado, sem redirecionamento!
+                if (_event === 'SIGNED_IN' || _event === 'SIGNED_OUT') {
+                     getCurrentUser().then(user => {
+                         if(mounted.current) setCurrentUser(user);
+                     });
+                }
             }
-            if (_event === 'SIGNED_OUT') {
-                if (mounted.current) setCurrentUser(null);
-            }
-        });
+        );
 
         return () => {
             mounted.current = false;
@@ -514,21 +556,17 @@ export default function AppHome() {
     }, []);
 
     const handlePlanSelect = (plan: any) => {
+        // Agora, se o usuário puder ver o Dashboard, ele está logado.
         setSelectedPlan(plan);
         setIsPaymentModalOpen(true);
     };
 
-    // CORREÇÃO: Função handleLogout
     const handleLogout = async () => {
-        try {
-            await logout();
-        } catch (error) {
-            console.error("Erro ao fazer logout no Supabase", error);
-        }
-        // FORÇA a navegação para a homepage. (Solução para o looping)
+        await logout();
+        // Força a navegação para a URL pública após o logout, sem depender de redirecionamento automático
         window.location.href = '/'; 
     }; 
-
+    
     // ----------------------------------------------------
     // INÍCIO DO FLUXO DE RENDERIZAÇÃO E REDIRECIONAMENTO
 
@@ -541,24 +579,35 @@ export default function AppHome() {
     }
 
     if (!currentUser) {
-        // <-- CORREÇÃO 1: Substitui redirect('/') por router.push e retorna null.
-        router.replace('/'); 
-        return null; // É crucial retornar null para interromper a renderização
+        // NÃO faz NENHUM redirecionamento. Apenas mostra o AccessDenied.
+        return (
+            <>
+                <AccessDenied onLoginClick={() => setIsLoginOpen(true)} />
+                <LoginModal 
+                    isOpen={isLoginOpen} 
+                    onClose={() => setIsLoginOpen(false)} 
+                    // ✅ CORREÇÃO TS7006: Tipando o parâmetro 'user' explicitamente
+                    onLogin={(user: User) => { 
+                        setCurrentUser(user); // Atualiza o estado para renderizar o Dashboard
+                        setIsLoginOpen(false);
+                    }} 
+                />
+            </>
+        );
     }
 
     // Agora que o usuário está garantido, renderiza o Dashboard
     return (
         <>
-            {/* <-- CORREÇÃO 2: Usa o operador de não-nulo (!) para tipagem correta */}
-            <DashboardLayout user={currentUser!} onLogout={handleLogout}>
-                <DashboardHome user={currentUser!} onPlanSelect={handlePlanSelect} />
+            <DashboardLayout user={currentUser} onLogout={handleLogout}>
+                <DashboardHome user={currentUser} onPlanSelect={handlePlanSelect} />
             </DashboardLayout>
-            {/* AGORA O MODAL ESTÁ ATIVO E CORRIGIDO */}
+            
             <PaymentModal 
                 isOpen={isPaymentModalOpen}
                 onClose={() => setIsPaymentModalOpen(false)}
                 plan={selectedPlan} 
-                currentUser={currentUser!} // <-- CORREÇÃO 2: Usa o operador de não-nulo (!)
+                currentUser={currentUser} 
             />
         </>
     );
