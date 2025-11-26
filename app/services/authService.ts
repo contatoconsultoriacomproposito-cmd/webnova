@@ -7,8 +7,11 @@ const mapProfileToUser = (profile: any, authId: string, email: string): User => 
     id: authId,
     name: profile.full_name || 'Usuário',
     email: email,
-    // CORREÇÃO: Se não tiver role no banco, assume NO_PLAN (usuário novo)
-    plan: (profile.role as PlanType) || PlanType.NO_PLAN,
+    // CORREÇÃO (Problemas 1 e 2): Se o perfil não tiver role, OU se o role for
+    // o valor padrão 'INSTITUCIONAL' (que ainda não foi pago), forçamos para NO_PLAN.
+    plan: (!profile.role || profile.role === PlanType.INSTITUTIONAL) // Usei PlanType.INSTITUTIONAL, conforme types.ts
+        ? PlanType.NO_PLAN
+        : (profile.role as PlanType),
     planExpiry: profile.plan_expiry, // Agora pode vir nulo
     avatarUrl: profile.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(profile.full_name || 'U')}&background=0ea5e9&color=fff`,
     
