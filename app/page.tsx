@@ -145,6 +145,7 @@ const AuthRedirector = ({ currentUser }: { currentUser: User | null }) => {
   const [selectedPlan, setSelectedPlan] = useState<any>(null);
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const mounted = useRef(true);
+  const router = useRouter();
 
   // ARQUIVO: app/page.tsx - Dentro de export default function Home()
 
@@ -162,7 +163,7 @@ useEffect(() => {
       const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
         if (_event === 'SIGNED_IN' && session) {
           // ESSA LINHA É CRUCIAL PARA O LOGIN GOOGLE/OAUTH
-          redirect('/app');
+          router.replace('/app');
         }
       });
 
@@ -171,7 +172,7 @@ useEffect(() => {
         subscription.unsubscribe();
       };
       // Mantenha a array de dependências vazia, [], se não estiver usando bypassAuth como dependência.
-  }, []);
+  }, [router]);
 
   const handlePlanSelect = (plan: any) => {
     if (!currentUser) {
