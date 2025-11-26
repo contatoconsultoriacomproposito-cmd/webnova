@@ -8,6 +8,7 @@ import { PLANS, CONTACT_PHONE_DISPLAY, CONTACT_WHATSAPP, TESTIMONIALS, PROCESS_S
 import { loginWithGoogle, getCurrentUser, logout } from './services/authService';
 import { supabase } from './supabaseClient';
 import { redirect } from 'next/navigation'; // <-- NOVO IMPORT OBRIGATÓRIO PARA REDIRECIONAMENTO
+import { useRouter } from 'next/navigation'; // <-- Importe o useRouter
 
 
 // --- COMPONENTES VISUAIS (NAVBAR, HERO, ETC) ---
@@ -106,32 +107,36 @@ const Navbar = ({ onLoginClick, onScrollTo, user }: { onLoginClick: () => void, 
 // app/page.tsx - NOVO COMPONENTE
 
 const AuthRedirector = ({ currentUser }: { currentUser: User | null }) => {
-    // Pegamos a URL somente no Client Side, depois de montado
-    const [isClient, setIsClient] = useState(false);
-    
-    useEffect(() => {
-        setIsClient(true);
-    }, []);
+      const router = useRouter(); // <-- Inicialize o hook
 
-    // Se não for cliente, ou se o usuário não estiver logado, não faz nada
-    if (!isClient || !currentUser) {
-        return null; 
-    }
+      // O código de isClient/useEffect é bom para garantir que roda apenas no navegador.
+      const [isClient, setIsClient] = useState(false);
+      
+      useEffect(() => {
+          setIsClient(true);
+      }, []);
 
-    // Se o usuário está logado, verificamos a URL.
-    // Usamos window.location.search para obter ?bypassAuth=true
-    const bypassAuth = window.location.search.includes('bypassAuth=true');
+      // 1. Se não for cliente, não faz nada.
+      if (!isClient) {
+          return null;
+      }
 
-    // Se o usuário está logado E NÃO tem o bypass na URL, redirecionamos para /app
-    if (currentUser && !bypassAuth) {
-        // Redirecionamento Client-Side (Next.js é mais estável aqui)
-        redirect('/app');
-        return null;
-    }
+      // 2. Se o usuário está logado E já estamos no Client-Side, verificamos o redirecionamento.
+      if (currentUser) {
+          // Usamos window.location.search para obter ?bypassAuth=true
+          const bypassAuth = window.location.search.includes('bypassAuth=true');
 
-    // Se chegou aqui, está logado, mas com bypass. Não faz nada.
-    return null;
-};
+          // Se o usuário está logado E NÃO tem o bypass na URL, redirecionamos para /app
+          if (!bypassAuth) {
+              // CORREÇÃO CRÍTICA: Use router.replace para Client-Side Navigation
+              router.replace('/app');
+              return null; // Pare de renderizar assim que o redirecionamento for acionado
+          }
+      }
+
+      // Se não está logado OU tem bypass, retorna null e renderiza a Landing Page
+      return null; 
+  };
 
 const Hero = ({ onCtaClick }: { onCtaClick: () => void }) => (
   <div id="home" className="relative pt-32 pb-20 lg:pt-48 lg:pb-40 overflow-hidden min-h-screen flex items-center">
