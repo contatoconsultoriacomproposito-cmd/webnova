@@ -104,42 +104,25 @@ const Navbar = ({ onLoginClick, onScrollTo, user }: { onLoginClick: () => void, 
   );
 };
 
-// app/page.tsx - NOVO COMPONENTE
-
-const AuthRedirector = ({ currentUser }: { currentUser: User | null }) => {
-      const router = useRouter(); // <-- Inicialize o hook
-
-      // O código de isClient/useEffect é bom para garantir que roda apenas no navegador.
-      const [isClient, setIsClient] = useState(false);
-      
-      useEffect(() => {
-          setIsClient(true);
-      }, []);
-
-      // 1. Se não for cliente, não faz nada.
-      if (!isClient) {
-          return null;
-      }
-
-      // 2. Se o usuário está logado E já estamos no Client-Side, verificamos o redirecionamento.
-      if (currentUser) {
-          // Usamos window.location.search para obter ?bypassAuth=true
-          const bypassAuth = window.location.search.includes('bypassAuth=true');
-
-          // Se o usuário está logado E NÃO tem o bypass na URL, redirecionamos para /app
-          if (!bypassAuth) {
-              // CORREÇÃO CRÍTICA: Use router.replace para Client-Side Navigation
-              router.replace('/app');
-              return null; // Pare de renderizar assim que o redirecionamento for acionado
-          }
-      }
-
-      // Se não está logado OU tem bypass, retorna null e renderiza a Landing Page
-      return null; 
+  // --- COMPONENTE MOCK PARA RESOLVER O ERRO ---
+  const PaymentModal = ({ isOpen, onClose, plan, currentUser }: any) => {
+    if (!isOpen) return null;
+    
+    return (
+      <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+        <div className="absolute inset-0 bg-black/80 backdrop-blur-md" onClick={onClose}></div>
+        <div className="bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl w-full max-w-lg p-8 relative z-10 text-center text-white">
+          <h2 className="text-2xl font-bold mb-4">Modal de Pagamento (Faltando)</h2>
+          <p className="mb-4">Este é um placeholder. O plano selecionado é: **{plan?.title}**</p>
+          <p className="text-sm text-slate-400">Usuário: {currentUser?.email}</p>
+          <button onClick={onClose} className="mt-6 px-6 py-2 bg-brand-600 rounded-lg">Fechar</button>
+        </div>
+      </div>
+    );
   };
 
-  export default function Home() {
-    const router = useRouter(); // Inicializa o router
+export default function Home() {
+    const router = useRouter();
     const [currentUser, setCurrentUser] = useState<User | null>(null);
     const [loadingSession, setLoadingSession] = useState(true);
     const [isLoginOpen, setIsLoginOpen] = useState(false);
@@ -149,26 +132,47 @@ const AuthRedirector = ({ currentUser }: { currentUser: User | null }) => {
 
     // Lógica de autenticação
     useEffect(() => {
+        const bypassAuth = window.location.search.includes('bypassAuth=true');
+
+        // 1. Busca usuário atual
         const fetchUser = async () => {
             const user = await getCurrentUser();
-            if (mounted.current) setCurrentUser(user);
-            if (mounted.current) setLoadingSession(false);
+            if (mounted.current) {
+                // ✅ REDIRECIONAMENTO CRÍTICO NA CARGA INICIAL
+                if (user && !bypassAuth) {
+                    router.replace('/app');
+                    return; // Interrompe a execução
+                }
+                
+                setCurrentUser(user);
+                setLoadingSession(false);
+            }
         };
+        
         fetchUser();
 
-        // Redirecionamento limpo no login (Client-Side)
-        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-            if (_event === 'SIGNED_IN' && session) {
-                // ✅ Usar router.replace para navegação Client-Side
-                router.replace('/app'); 
+        // 2. Escuta mudanças de autenticação
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(
+            (_event, session) => {
+                if (!mounted.current) return;
+
+                // ✅ REDIRECIONAMENTO APÓS NOVO LOGIN
+                if (_event === 'SIGNED_IN' && session) {
+                    router.replace('/app');
+                }
+                
+                // Atualiza estado do usuário
+                if (_event === 'SIGNED_OUT') {
+                    setCurrentUser(null);
+                }
             }
-        });
+        );
 
         return () => {
             mounted.current = false;
             subscription.unsubscribe();
         };
-    }, [router]); // Mantenha router como dependência
+    }, [router]);
 
     const handlePlanSelect = (plan: any) => {
         if (!currentUser) {
@@ -179,9 +183,7 @@ const AuthRedirector = ({ currentUser }: { currentUser: User | null }) => {
         setIsPaymentModalOpen(true);
     };
 
-    // ----------------------------------------------------
-    // FLUXO DE RENDERIZAÇÃO E REDIRECIONAMENTO
-
+    // ✅ LOADING STATE
     if (loadingSession) {
         return (
             <div className="min-h-screen bg-slate-950 flex items-center justify-center">
@@ -190,23 +192,15 @@ const AuthRedirector = ({ currentUser }: { currentUser: User | null }) => {
         );
     }
 
-    // 🚩 CHECAGEM DE REDIRECIONAMENTO NO NÍVEL MAIS ALTO
-    if (currentUser) {
-        const bypassAuth = window.location.search.includes('bypassAuth=true');
-        
-        if (!bypassAuth) {
-            // ✅ FORÇA O REDIRECIONAMENTO DO CLIENT-SIDE E INTERROMPE
-            router.replace('/app');
-            return null; // CRUCIAL: Interrompe a renderização da LandingPage
-        }
-    }
-
-    // Se não estiver logado OU tiver bypassAuth=true, renderiza a Landing Page
+    // ✅ RENDERIZA A LANDING PAGE (se não houve redirecionamento)
     return (
         <>
             <Navbar 
                 onLoginClick={() => setIsLoginOpen(true)} 
-                onScrollTo={() => {}} 
+                onScrollTo={(id) => {
+                    const element = document.getElementById(id);
+                    element?.scrollIntoView({ behavior: 'smooth' });
+                }} 
                 user={currentUser} 
             />
             
@@ -220,7 +214,15 @@ const AuthRedirector = ({ currentUser }: { currentUser: User | null }) => {
                 onClose={() => setIsLoginOpen(false)} 
                 onLogin={() => {}} 
             />
-            {/* PaymentModal omitido por brevidade */}
+            
+            {selectedPlan && (
+                <PaymentModal 
+                    isOpen={isPaymentModalOpen}
+                    onClose={() => setIsPaymentModalOpen(false)}
+                    plan={selectedPlan} 
+                    currentUser={currentUser} 
+                />
+            )}
         </>
     );
 }
