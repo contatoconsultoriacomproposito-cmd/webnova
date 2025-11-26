@@ -781,12 +781,6 @@ export default function Home() {
         );
     }
 
-    // 2. REDIRECIONAMENTO (CORREÇÃO DO LOOP): Se o usuário está logado E não está em modo bypass, redireciona E para a renderização.
-    if (currentUser && !bypassAuth) {
-        router.replace('/app'); 
-        return null; // CRUCIAL: Interrompe imediatamente qualquer renderização do componente Home.
-    }
-
     // 3. RENDERIZAÇÃO NORMAL: Se não está logado OU se está em bypass, renderiza a Landing Page.
     return (
         <>
