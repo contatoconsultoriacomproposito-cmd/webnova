@@ -106,38 +106,6 @@ const Navbar = ({ onLoginClick, onScrollTo, user }: { onLoginClick: () => void, 
 
 // app/page.tsx - NOVO COMPONENTE
 
-const AuthRedirector = ({ currentUser }: { currentUser: User | null }) => {
-      const router = useRouter(); // <-- Inicialize o hook
-
-      // O código de isClient/useEffect é bom para garantir que roda apenas no navegador.
-      const [isClient, setIsClient] = useState(false);
-      
-      useEffect(() => {
-          setIsClient(true);
-      }, []);
-
-      // 1. Se não for cliente, não faz nada.
-      if (!isClient) {
-          return null;
-      }
-
-      // 2. Se o usuário está logado E já estamos no Client-Side, verificamos o redirecionamento.
-      if (currentUser) {
-          // Usamos window.location.search para obter ?bypassAuth=true
-          const bypassAuth = window.location.search.includes('bypassAuth=true');
-
-          // Se o usuário está logado E NÃO tem o bypass na URL, redirecionamos para /app
-          if (!bypassAuth) {
-              // CORREÇÃO CRÍTICA: Use router.replace para Client-Side Navigation
-              router.replace('/app');
-              return null; // Pare de renderizar assim que o redirecionamento for acionado
-          }
-      }
-
-      // Se não está logado OU tem bypass, retorna null e renderiza a Landing Page
-      return null; 
-  };
-
   export default function Home() {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [loadingSession, setLoadingSession] = useState(true);
@@ -196,10 +164,7 @@ useEffect(() => {
   // Se não estiver logado e não estiver carregando, renderiza a Landing Page (Rota Pública)
   return (
     <>
-      {/* NOVO: Componente que gerencia o redirecionamento */}
-      <AuthRedirector currentUser={currentUser} />
-      
-      {/* Assumindo que LandingPage é o componente que agrega toda a sua homepage */}
+
       <LandingPage 
         onPlanSelect={handlePlanSelect} 
         onLoginClick={() => setIsLoginOpen(true)}
