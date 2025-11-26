@@ -27,6 +27,12 @@ const DashboardLayout = ({ user, children, onLogout }: any) => {
         
         <div className="flex-grow p-4 space-y-2 overflow-y-auto">
           <div className="px-4 py-2 text-xs font-bold uppercase text-slate-500 tracking-wider">Menu Principal</div>
+
+          {/* NOVO: Botão para Homepage */}
+          <a href="/" className="w-full flex items-center gap-3 px-4 py-3 text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl transition-all">
+            <ChevronLeft size={20} /> Voltar ao Site Público
+          </a>
+          {/* FIM NOVO */}
           
           <button className="w-full flex items-center gap-3 px-4 py-3 text-white bg-brand-600/10 border border-brand-500/20 rounded-xl hover:bg-brand-600/20 transition-all">
             <Layout size={20} className="text-brand-400" /> Visão Geral
@@ -317,6 +323,150 @@ const DashboardHome = ({ user, onPlanSelect }: { user: User, onPlanSelect: (plan
   );
 };
 
+// Payment Modal Component
+const PaymentModal = ({ plan, isOpen, onClose, currentUser }: { plan: any, isOpen: boolean, onClose: () => void, currentUser: User | null }) => {
+  const [loading, setLoading] = useState(false);
+  
+  // Estados para os Upsells
+  const [includeHosting, setIncludeHosting] = useState(false);
+  const [includeSupport, setIncludeSupport] = useState(false);
+
+  // Reseta os estados quando o modal abre
+  useEffect(() => {
+    if (isOpen) {
+        setIncludeHosting(false);
+        setIncludeSupport(false);
+    }
+  }, [isOpen]);
+
+  if (!isOpen || !plan) return null;
+
+  // Cálculo do Preço de Suporte VIP
+  const supportPrice = plan.price * VIP_SUPPORT_MULTIPLIER;
+  
+  // Cálculo do Total
+  const total = plan.price + (includeHosting ? UPSALE_PRICE : 0) + (includeSupport ? supportPrice : 0);
+
+  const handlePayment = async () => {
+    if (!currentUser) {
+        // Should not happen due to parent logic, but safety check
+        alert("Você precisa estar logado para continuar.");
+        return;
+    }
+
+    setLoading(true);
+
+    try {
+        // Processo de Checkout
+        const response = await fetch('/api/checkout', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                planId: plan.id,
+                title: plan.title,
+                price: plan.price,
+                includeHosting: includeHosting,
+                includeSupport: includeSupport, 
+                includeSupportPrice: includeSupport ? supportPrice : 0, 
+                email: currentUser.email // Usa email do usuário logado
+            }),
+        });
+
+        if (response.ok) {
+            const data = await response.json();
+            window.location.href = data.url; 
+        } else {
+            const errorData = await response.json();
+            const errorMessage = errorData.details || errorData.error || "Erro desconhecido";
+            alert(`Erro no Checkout: ${errorMessage}`);
+            setLoading(false);
+        }
+    } catch (error) {
+        console.error("Erro no pagamento:", error);
+        alert("Erro de conexão. Verifique se o servidor está rodando.");
+        setLoading(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/80 backdrop-blur-md" onClick={onClose}></div>
+      <div className="bg-slate-900 border border-slate-700 rounded-3xl shadow-2xl w-full max-w-lg relative z-10 overflow-hidden animate-[scaleIn_0.2s_ease-out] max-h-[90vh] overflow-y-auto">
+        <div className="bg-gradient-to-r from-brand-600 to-brand-800 p-8 text-white text-center">
+          <h3 className="text-2xl font-bold">Resumo do Pedido</h3>
+          <p className="opacity-90 mt-2 text-brand-100">Você escolheu: {plan.title}</p>
+        </div>
+        
+        <div className="p-8">
+          {/* Valor Base */}
+          <div className="flex justify-between items-center mb-6 text-lg">
+            <span className="text-slate-400">Criação do Site:</span>
+            <span className="font-bold text-2xl text-white">R$ {plan.price.toFixed(2)}</span>
+          </div>
+
+          {/* UPSELL 1: HOSPEDAGEM */}
+          <div 
+             onClick={() => setIncludeHosting(!includeHosting)}
+             className={`border rounded-2xl p-4 mb-4 relative cursor-pointer transition-all ${includeHosting ? 'bg-amber-900/20 border-amber-500/50' : 'bg-slate-800 border-slate-700 hover:border-slate-500'}`}
+          >
+            <div className="flex items-start gap-4">
+               <div className={`p-2 rounded-full mt-1 ${includeHosting ? 'bg-amber-500 text-slate-900' : 'bg-slate-700 text-slate-400'}`}>
+                  {includeHosting ? <CheckSquare size={20} /> : <Square size={20} />}
+               </div>
+               <div>
+                   <h4 className={`font-bold text-lg ${includeHosting ? 'text-amber-400' : 'text-white'}`}>Hospedagem Premium</h4>
+                   <p className="text-sm text-slate-400 mt-1">Domínio .com.br Grátis + SSL + Emails.</p>
+                   <div className="mt-2 font-bold text-white">+ R$ {UPSALE_PRICE.toFixed(2)} <span className="text-xs font-normal text-slate-500">/ano</span></div>
+               </div>
+            </div>
+          </div>
+
+          {/* UPSELL 2: SUPORTE VIP */}
+          <div 
+             onClick={() => setIncludeSupport(!includeSupport)}
+             className={`border rounded-2xl p-4 mb-6 relative cursor-pointer transition-all ${includeSupport ? 'bg-purple-900/20 border-purple-500/50' : 'bg-slate-800 border-slate-700 hover:border-slate-500'}`}
+          >
+            <div className="flex items-start gap-4">
+               <div className={`p-2 rounded-full mt-1 ${includeSupport ? 'bg-purple-500 text-white' : 'bg-slate-700 text-slate-400'}`}>
+                  {includeSupport ? <CheckSquare size={20} /> : <Square size={20} />}
+               </div>
+               <div>
+                   <h4 className={`font-bold text-lg ${includeSupport ? 'text-purple-400' : 'text-white'}`}>Suporte VIP Ilimitado</h4>
+                   <p className="text-sm text-slate-400 mt-1">Atendimento prioritário e ajustes ilimitados.</p>
+                   <div className="mt-2 font-bold text-white">+ R$ {supportPrice.toFixed(2)} <span className="text-xs font-normal text-slate-500">/semestre</span></div>
+               </div>
+            </div>
+          </div>
+          
+          <div className="border-t border-slate-700 pt-6 mb-6">
+             <div className="flex justify-between items-center">
+                <span className="text-lg text-slate-300">Total a Pagar:</span>
+                <span className="text-3xl font-extrabold text-white">R$ {total.toFixed(2)}</span>
+             </div>
+          </div>
+
+          <div className="space-y-4">
+              <div className="bg-slate-800 p-3 rounded-lg text-sm text-slate-300 flex items-center gap-2">
+                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                  Logado como: <span className="font-bold text-white">{currentUser?.email}</span>
+              </div>
+
+              <button 
+                onClick={handlePayment}
+                disabled={loading}
+                className="w-full py-4 bg-brand-600 hover:bg-brand-500 text-white font-bold rounded-xl transition-all shadow-lg flex items-center justify-center gap-2 disabled:opacity-50 transform hover:-translate-y-1"
+              >
+                {loading ? <Loader2 className="animate-spin" /> : `Ir para Pagamento`}
+              </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 
 // Este é o componente principal da nova rota /app
 export default function AppHome() {
@@ -390,8 +540,14 @@ export default function AppHome() {
             <DashboardLayout user={currentUser} onLogout={handleLogout}>
                 <DashboardHome user={currentUser} onPlanSelect={handlePlanSelect} />
             </DashboardLayout>
-            {/* O PaymentModal e outros modais que precisam de estado devem ser definidos aqui. */}
-            {/* <PaymentModal isOpen={isPaymentModalOpen} ... /> */}
+            {/* AGORA O MODAL ESTÁ ATIVO E CORRIGIDO */}
+            <PaymentModal 
+                isOpen={isPaymentModalOpen}
+                onClose={() => setIsPaymentModalOpen(false)}
+                plan={selectedPlan} // Nome da prop CORRETO
+                currentUser={currentUser} // Propriedade faltante ADICIONADA
+            />
+            
         </>
     );
 }
