@@ -469,45 +469,44 @@ const PaymentModal = ({ plan, isOpen, onClose, currentUser }: { plan: any, isOpe
 
 
 // Este é o componente principal da nova rota /app
+// ARQUIVO: app/app/page.tsx
+
 export default function AppHome() {
     const [currentUser, setCurrentUser] = useState<User | null>(null);
     const [loadingSession, setLoadingSession] = useState(true);
     const [selectedPlan, setSelectedPlan] = useState<any>(null);
     const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
+    const mounted = useRef(true); // Adicionei useRef para evitar warning no useEffect
 
-    // Lógica de autenticação: A mesma de antes, mas sem a LandingPage
+    // Lógica de autenticação
     useEffect(() => {
-        let mounted = true;
         
         const fetchUser = async () => {
             const user = await getCurrentUser();
-            if (mounted) {
+            if (mounted.current) {
                 if (user) {
                     setCurrentUser(user);
-                } else {
-                    // SE NÃO HOUVER USUÁRIO LOGADO, REDIRECIONA PARA A HOMEPAGE
-                    redirect('/'); 
                 }
+                // REMOVEMOS O redirect('/') DAQUI. Ele será tratado no bloco de renderização.
             }
-            if (mounted) setLoadingSession(false);
+            if (mounted.current) setLoadingSession(false);
         };
 
         fetchUser();
 
         const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
           if (_event === 'SIGNED_IN' && session) {
-            // Recarrega o usuário após login (necessário se o login for via modal/pop-up)
             getCurrentUser().then(user => {
-                if(mounted && user) setCurrentUser(user);
+                if(mounted.current && user) setCurrentUser(user);
             });
           }
           if (_event === 'SIGNED_OUT') {
-            if (mounted) setCurrentUser(null);
+            if (mounted.current) setCurrentUser(null);
           }
         });
 
         return () => {
-          mounted = false;
+          mounted.current = false;
           subscription.unsubscribe();
         };
     }, []);
@@ -517,25 +516,32 @@ export default function AppHome() {
         setIsPaymentModalOpen(true);
     };
 
+    // CORREÇÃO: Função handleLogout
     const handleLogout = async () => {
-        // Removemos o setCurrentUser(null) para evitar um re-render desnecessário
         try {
-            await logout(); // Faz o logout no Supabase (o mais importante)
+            await logout();
         } catch (error) {
             console.error("Erro ao fazer logout no Supabase", error);
         }
+        // FORÇA a navegação para a homepage. (Solução para o looping)
+        window.location.href = '/'; 
+    }; 
+    // <--- NOTA: Removido o ponto e vírgula extra e a linha window.location.href = '/'; que estavam aqui.
 
-    // NOVO: Redireciona imediatamente para a homepage após o Supabase confirmar o logout.
-    // Isso é a melhor prática em componentes cliente (Client Components) do Next.js.
-    window.location.href = '/'; 
-};
+    // ----------------------------------------------------
+    // INÍCIO DO FLUXO DE RENDERIZAÇÃO E REDIRECIONAMENTO
 
-    if (loadingSession || !currentUser) {
+    if (loadingSession) {
         return (
             <div className="min-h-screen bg-slate-950 flex items-center justify-center">
                 <Loader2 className="w-10 h-10 text-brand-500 animate-spin" />
             </div>
         );
+    }
+
+    if (!currentUser) {
+        // Redirecionamento limpo para a homepage (Solução para o looping e acesso direto)
+        redirect('/'); 
     }
     
     // Agora que o usuário está garantido, renderiza o Dashboard
@@ -548,14 +554,9 @@ export default function AppHome() {
             <PaymentModal 
                 isOpen={isPaymentModalOpen}
                 onClose={() => setIsPaymentModalOpen(false)}
-                plan={selectedPlan} // Nome da prop CORRETO
-                currentUser={currentUser} // Propriedade faltante ADICIONADA
+                plan={selectedPlan} 
+                currentUser={currentUser}
             />
-            
         </>
     );
 }
-
-// NOTE: Você precisará trazer as importações de ícones (lucide-react) e os componentes
-// LandingPage, LoginModal e PaymentModal para esta nova estrutura, se necessário.
-// No entanto, o DashboardLayout e DashboardHome já estão definidos acima.

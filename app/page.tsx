@@ -7,7 +7,7 @@ import { PlanType, User } from './types';
 import { PLANS, CONTACT_PHONE_DISPLAY, CONTACT_WHATSAPP, TESTIMONIALS, PROCESS_STEPS, UPSALE_PRICE, VIP_SUPPORT_MULTIPLIER, DOMAIN_PRICES, HOSTING_PRICES } from './constants';
 import { loginWithGoogle, getCurrentUser, logout } from './services/authService';
 import { supabase } from './supabaseClient';
-import { redirect, useSearchParams } from 'next/navigation'; // <-- NOVO IMPORT OBRIGATÓRIO PARA REDIRECIONAMENTO
+import { redirect } from 'next/navigation'; // <-- NOVO IMPORT OBRIGATÓRIO PARA REDIRECIONAMENTO
 
 
 // --- COMPONENTES VISUAIS (NAVBAR, HERO, ETC) ---
@@ -101,6 +101,36 @@ const Navbar = ({ onLoginClick, onScrollTo, user }: { onLoginClick: () => void, 
       )}
     </nav>
   );
+};
+
+// app/page.tsx - NOVO COMPONENTE
+
+const AuthRedirector = ({ currentUser }: { currentUser: User | null }) => {
+    // Pegamos a URL somente no Client Side, depois de montado
+    const [isClient, setIsClient] = useState(false);
+    
+    useEffect(() => {
+        setIsClient(true);
+    }, []);
+
+    // Se não for cliente, ou se o usuário não estiver logado, não faz nada
+    if (!isClient || !currentUser) {
+        return null; 
+    }
+
+    // Se o usuário está logado, verificamos a URL.
+    // Usamos window.location.search para obter ?bypassAuth=true
+    const bypassAuth = window.location.search.includes('bypassAuth=true');
+
+    // Se o usuário está logado E NÃO tem o bypass na URL, redirecionamos para /app
+    if (currentUser && !bypassAuth) {
+        // Redirecionamento Client-Side (Next.js é mais estável aqui)
+        redirect('/app');
+        return null;
+    }
+
+    // Se chegou aqui, está logado, mas com bypass. Não faz nada.
+    return null;
 };
 
 const Hero = ({ onCtaClick }: { onCtaClick: () => void }) => (
@@ -684,8 +714,6 @@ const LandingPage = ({ onPlanSelect, onLoginClick }: { onPlanSelect: (plan: any)
 // --- INÍCIO DA FUNÇÃO HOME ATUALIZADA ---
 
 export default function Home() {
-  const searchParams = useSearchParams();
-  const bypassAuth = searchParams.get('bypassAuth') === 'true';
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [loadingSession, setLoadingSession] = useState(true);
   const [isLoginOpen, setIsLoginOpen] = useState(false);
@@ -699,9 +727,6 @@ export default function Home() {
         if (mounted.current) {
             // LÓGICA DE REDIRECIONAMENTO MODIFICADA:
             // Redireciona APENAS se estiver logado E NÃO for para ignorar a autenticação
-            if (user && !bypassAuth) { 
-                redirect('/app'); 
-            }
         }
         if (mounted.current) setCurrentUser(user); // Define o usuário para o caso de bypass, mas ele não será usado
         if (mounted.current) setLoadingSession(false);
@@ -721,7 +746,7 @@ export default function Home() {
       mounted.current = false;
       subscription.unsubscribe();
     };
-  }, [bypassAuth]);
+  }, []);
 
   const handlePlanSelect = (plan: any) => {
     if (!currentUser) {
@@ -734,7 +759,7 @@ export default function Home() {
 
   // Se a sessão está carregando, mostra o loader.
   // Se currentUser for verdadeiro, o redirect('/app') será executado no useEffect.
-  if (loadingSession || currentUser && !bypassAuth) {
+  if (loadingSession) {
     return (
       <div className="min-h-screen bg-slate-950 flex items-center justify-center">
         <Loader2 className="w-10 h-10 text-brand-500 animate-spin" />
@@ -745,6 +770,9 @@ export default function Home() {
   // Se não estiver logado e não estiver carregando, renderiza a Landing Page (Rota Pública)
   return (
     <>
+      {/* NOVO: Componente que gerencia o redirecionamento */}
+      <AuthRedirector currentUser={currentUser} />
+      
       {/* Assumindo que LandingPage é o componente que agrega toda a sua homepage */}
       <LandingPage 
         onPlanSelect={handlePlanSelect} 
