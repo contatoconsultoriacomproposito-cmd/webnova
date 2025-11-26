@@ -28,10 +28,10 @@ const DashboardLayout = ({ user, children, onLogout }: any) => {
         <div className="flex-grow p-4 space-y-2 overflow-y-auto">
           <div className="px-4 py-2 text-xs font-bold uppercase text-slate-500 tracking-wider">Menu Principal</div>
 
-          {/* NOVO: Botão para Homepage */}
-          <a href="/" className="w-full flex items-center gap-3 px-4 py-3 text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl transition-all">
-            <ChevronLeft size={20} /> Voltar ao Site Público
-          </a>
+          {/* CORREÇÃO: Adicionando ?bypassAuth=true ao link */}
+            <a href="/?bypassAuth=true" className="w-full flex items-center gap-3 px-4 py-3 text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl transition-all">
+              <ChevronLeft size={20} /> Voltar ao Site Público
+            </a>
           {/* FIM NOVO */}
           
           <button className="w-full flex items-center gap-3 px-4 py-3 text-white bg-brand-600/10 border border-brand-500/20 rounded-xl hover:bg-brand-600/20 transition-all">
@@ -518,13 +518,17 @@ export default function AppHome() {
     };
 
     const handleLogout = async () => {
-        setCurrentUser(null); // Optimistic UI update
+        // Removemos o setCurrentUser(null) para evitar um re-render desnecessário
         try {
-            await logout();
+            await logout(); // Faz o logout no Supabase (o mais importante)
         } catch (error) {
             console.error("Erro ao fazer logout no Supabase", error);
         }
-    };
+
+    // NOVO: Redireciona imediatamente para a homepage após o Supabase confirmar o logout.
+    // Isso é a melhor prática em componentes cliente (Client Components) do Next.js.
+    window.location.href = '/'; 
+};
 
     if (loadingSession || !currentUser) {
         return (
