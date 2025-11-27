@@ -90,7 +90,7 @@ export const TESTIMONIALS: Testimonial[] = [
     id: 1,
     name: "Ricardo Silva",
     role: "CEO da TechStart",
-    content: "O trabalho da WebNova foi excepcional. Minha Landing Page converteu 3x mais que a antiga. O suporte é realmente VIP e me ajudaram em cada etapa.",
+    content: "O trabalho da 321Sites foi excepcional. Minha Landing Page converteu 3x mais que a antiga. O suporte é realmente VIP e me ajudaram em cada etapa.",
     avatar: "https://randomuser.me/api/portraits/men/32.jpg",
     rating: 5
   },

@@ -5,7 +5,7 @@ import "./globals.css";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "WebNova - Criação de Sites Premium",
+  title: "321Sites - Criação de Sites Premium",
   description: "Transforme sua presença digital com sites de alta performance.",
   verification: {
     google: "0KG0zKsqFRDAImaL87ddciTf_RINgkewzJWB3B5W0V0",
