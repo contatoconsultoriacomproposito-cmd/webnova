@@ -19,8 +19,8 @@ const DashboardLayout = ({ user, children, onLogout }: any) => {
       <aside className="w-72 bg-slate-900 border-r border-slate-800 text-slate-300 flex-shrink-0 hidden md:flex flex-col">
         <div className="p-8 border-b border-slate-800">
            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 bg-brand-600 rounded-lg flex items-center justify-center text-white font-bold">W</div>
-              <div className="font-bold text-2xl text-white">WebNova</div>
+              <div className="w-8 h-8 bg-brand-600 rounded-lg flex items-center justify-center text-white font-bold">321</div>
+              <div className="font-bold text-2xl text-white">Site</div>
            </div>
            <div className="text-xs text-brand-400 font-medium mt-2 pl-11">Painel do Cliente</div>
         </div>
