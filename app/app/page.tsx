@@ -90,7 +90,7 @@ const DashboardLayout = ({ user, children, onLogout }: any) => {
 
         {/* Mobile Header */}
         <header className="md:hidden bg-slate-900/80 backdrop-blur-md border-b border-slate-800 text-white p-4 flex justify-between items-center sticky top-0 z-20">
-          <span className="font-bold text-xl">WebNova</span>
+          <span className="font-bold text-xl">321Site</span>
           <button onClick={onLogout}><LogOut size={20} /></button>
         </header>
 
