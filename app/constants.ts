@@ -23,6 +23,10 @@ export const HOSTING_PRICES = [
 // O preço do Suporte VIP é calculado dinamicamente: Valor do Plano * 0.75
 export const VIP_SUPPORT_MULTIPLIER = 0.75;
 
+// Serviços de Assinatura
+// ⚠️ NOVO CAMPO: Preço Mensal da Gestão de Tráfego Pago
+export const PAID_TRAFFIC_PRICE = 497.00; // Use o valor que você definir
+
 // CREDENCIAIS DO MERCADO PAGO
 export const MP_ACCESS_TOKEN = 'APP_USR-7307423595236182-112414-d6ae49903b7f882f9979cf8dd126ec92-371667048';
 

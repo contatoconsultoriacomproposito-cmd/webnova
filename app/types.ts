@@ -11,25 +11,39 @@ export interface User {
   id: string;
   name: string;
   email: string;
-  plan: PlanType;
+  plan: PlanType; // Produto Principal: Tipo de Site
   planExpiry?: string;
   avatarUrl?: string;
-  // Novos campos para controle de serviços
+  supportTicketsRemaining?: number | 'unlimited';
+
+  // --- Serviços Adicionais (Produtos com Regras de Negócio de Tempo/Ativação) ---
+  
+  // 1. Serviço de Hospedagem
   hosting?: {
     active: boolean;
-    expiryDate?: string;
+    expiryDate?: string; // Data de expiração anual/bianual
     planYears?: number;
   };
+  
+  // 2. Serviço de Registro de Domínio
   domain?: {
     active: boolean;
-    expiryDate?: string;
+    expiryDate?: string; // Data de expiração anual
     domainName?: string;
   };
+  
+  // 3. Serviço de Suporte VIP Ilimitado
   vipSupport?: {
     active: boolean;
-    expiryDate?: string;
+    expiryDate?: string; // Data de expiração anual
   };
-  supportTicketsRemaining?: number | 'unlimited';
+
+  // 4. Serviço de Assinatura Recorrente (Gestão de Tráfego Pago)
+  paidTraffic?: {
+    active: boolean;
+    subscriptionId?: string; // ID da assinatura na plataforma de pagamento (Mercado Pago, Stripe, etc.)
+    currentPeriodEnd?: string; // Fim do período atual (para controle de renovação mensal)
+  }
 }
 
 export interface PlanDetails {
