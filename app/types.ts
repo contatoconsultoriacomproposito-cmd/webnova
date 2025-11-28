@@ -41,6 +41,7 @@ export interface User {
   // 4. Serviço de Assinatura Recorrente (Gestão de Tráfego Pago)
   paidTraffic?: {
     active: boolean;
+    planName?: string;
     subscriptionId?: string; // ID da assinatura na plataforma de pagamento (Mercado Pago, Stripe, etc.)
     currentPeriodEnd?: string; // Fim do período atual (para controle de renovação mensal)
   }

@@ -3,7 +3,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Layout, Menu, X, CheckCircle, Smartphone, Globe, Code, Rocket, ChevronRight, Star, ArrowRight, Monitor, ShoppingBag, FileText, Settings, Users, LogOut, Plus, MessageSquare, ShieldCheck, Palette, Search, Headphones, ChevronLeft, Mail, CheckSquare, Square, Loader2, Server, Lock, AlertTriangle, LifeBuoy } from 'lucide-react';
+import { Layout, Menu, X, CheckCircle, Smartphone, Globe, Code, Rocket, ChevronRight, Star, ArrowRight, Monitor, ShoppingBag, FileText, Settings, Users, LogOut, Plus, MessageSquare, ShieldCheck, Palette, Search, Headphones, ChevronLeft, Mail, CheckSquare, Square, Loader2, Server, Lock, AlertTriangle, LifeBuoy, Megaphone } from 'lucide-react';
 import { PlanType, User } from '../types';
 import { PLANS, CONTACT_PHONE_DISPLAY, CONTACT_WHATSAPP, TESTIMONIALS, PROCESS_STEPS, UPSALE_PRICE, VIP_SUPPORT_MULTIPLIER, DOMAIN_PRICES, HOSTING_PRICES } from '../constants';
 import { loginWithGoogle, getCurrentUser, logout } from '../services/authService';
@@ -104,17 +104,30 @@ const DashboardLayout = ({ user, children, onLogout }: any) => {
 
 const DashboardHome = ({ user, onPlanSelect }: { user: User, onPlanSelect: (plan: any) => void }) => {
   
-  const handleServicePurchase = async (serviceType: 'domain' | 'hosting' | 'support', option: any) => {
+  const handleServicePurchase = async (serviceType: 'domain' | 'hosting' | 'support' | 'traffic_ads', option: any) => {
     try {
-        const response = await fetch('/api/checkout', {
+        // Define qual rota chamar baseada no tipo de serviço
+        const endpoint = serviceType === 'traffic_ads' 
+            ? '/api/checkout/paidtraffic'  // Rota de Assinatura
+            : '/api/checkout';             // Rota de Compra Única (existente)
+
+        const response = await fetch(endpoint, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
+                // Dados comuns
+                email: user.email,
+                title: option.title,
+                price: option.price,
+                
+                // Campos específicos para a rota padrão (checkout)
                 isAddon: true,
                 addonTitle: option.title,
                 addonPrice: option.price,
                 addonId: serviceType,
-                email: user.email
+                
+                // Campos específicos para a rota de assinatura (paidtraffic)
+                reason: option.title 
             }),
         });
 
@@ -237,6 +250,28 @@ const DashboardHome = ({ user, onPlanSelect }: { user: User, onPlanSelect: (plan
                 <div className="text-lg font-bold text-slate-500">Não contratado</div>
             )}
          </div>
+         {/* NOVO Card 5: Tráfego Pago (Ads) */}
+         <div className="bg-slate-900 p-6 rounded-2xl shadow-lg border border-slate-800 relative overflow-hidden">
+            <div className="absolute top-0 right-0 p-2 opacity-10">
+                <Megaphone size={40} className="text-blue-500"/>
+            </div>
+            <div className="text-slate-400 text-xs font-bold uppercase mb-2">Tráfego Pago (Google)</div>
+            
+            {/* CORREÇÃO: Usando user.paidTraffic conforme types.ts */}
+            {user.paidTraffic?.active ? (
+                <>
+                    <div className="text-lg font-bold text-blue-400 flex items-center gap-2 truncate">
+                        <CheckCircle size={16}/> {user.paidTraffic.planName || 'Ativo'}
+                    </div>
+                    {user.paidTraffic.currentPeriodEnd && (
+                         <div className="mt-2 text-xs text-slate-500">Renova em: {new Date(user.paidTraffic.currentPeriodEnd).toLocaleDateString('pt-BR')}</div>
+                    )}
+                </>
+            ) : (
+                <div className="text-lg font-bold text-slate-500">Não contratado</div>
+            )}
+         </div>
+
       </div>
 
       <h3 className="text-2xl font-bold text-white pt-8">Contratação de Serviços Adicionais</h3>
