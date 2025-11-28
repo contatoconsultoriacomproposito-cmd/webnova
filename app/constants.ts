@@ -25,7 +25,11 @@ export const VIP_SUPPORT_MULTIPLIER = 0.75;
 
 // Serviços de Assinatura
 // ⚠️ NOVO CAMPO: Preço Mensal da Gestão de Tráfego Pago
-export const PAID_TRAFFIC_PRICE = 497.00; // Use o valor que você definir
+export const ADS_PRICES = [
+  { campaigns: 'Até 5 Campanhas', price: 750.00, id: 'ads_basic', label: 'Iniciante' },
+  { campaigns: '6 a 10 Campanhas', price: 1250.00, id: 'ads_pro', label: 'Profissional' },
+  { campaigns: '11 a 20 Campanhas', price: 2500.00, id: 'ads_advanced', label: 'Empresarial' }
+];
 
 // CREDENCIAIS DO MERCADO PAGO
 export const MP_ACCESS_TOKEN = 'APP_USR-7307423595236182-112414-d6ae49903b7f882f9979cf8dd126ec92-371667048';
