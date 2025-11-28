@@ -108,8 +108,8 @@ const DashboardHome = ({ user, onPlanSelect }: { user: User, onPlanSelect: (plan
     try {
         // Define qual rota chamar baseada no tipo de serviço
         const endpoint = serviceType === 'traffic_ads' 
-            ? '/api/checkout/paidtraffic'  // Rota de Assinatura
-            : '/api/checkout';             // Rota de Compra Única (existente)
+            ? '/api/checkout/paidtraffic'  // Rota de Assinatura (para serviços recorrentes)
+            : '/api/checkout';             // Rota de Compra Única (para Domínio, Hospedagem, Suporte VIP)
 
         const response = await fetch(endpoint, {
             method: 'POST',
@@ -120,13 +120,13 @@ const DashboardHome = ({ user, onPlanSelect }: { user: User, onPlanSelect: (plan
                 title: option.title,
                 price: option.price,
                 
-                // Campos específicos para a rota padrão (checkout)
+                // Campos comuns para a rota padrão (checkout) - Usados para Domínio, Hospedagem e Suporte
                 isAddon: true,
                 addonTitle: option.title,
                 addonPrice: option.price,
                 addonId: serviceType,
                 
-                // Campos específicos para a rota de assinatura (paidtraffic)
+                // Campos específicos para a rota de assinatura (paidtraffic) - Usado para Tráfego Pago
                 reason: option.title 
             }),
         });
@@ -207,8 +207,8 @@ const DashboardHome = ({ user, onPlanSelect }: { user: User, onPlanSelect: (plan
         </div>
       </div>
 
-      {/* Status Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      {/* Status Cards - 5 CARDS NO GRID DE 4 COLUNAS (O 5º quebra linha, conforme o screenshot) */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6"> 
          {/* Card 1: Plano */}
          <div className="bg-slate-900 p-6 rounded-2xl shadow-lg border border-slate-800">
             <div className="text-slate-400 text-xs font-bold uppercase mb-2">Plano Atual</div>
@@ -250,18 +250,19 @@ const DashboardHome = ({ user, onPlanSelect }: { user: User, onPlanSelect: (plan
                 <div className="text-lg font-bold text-slate-500">Não contratado</div>
             )}
          </div>
-         {/* NOVO Card 5: Tráfego Pago (Ads) */}
+         
+         {/* Card 5: Tráfego Pago (Ads) - CARD DE STATUS (Opção 2) */}
          <div className="bg-slate-900 p-6 rounded-2xl shadow-lg border border-slate-800 relative overflow-hidden">
             <div className="absolute top-0 right-0 p-2 opacity-10">
                 <Megaphone size={40} className="text-blue-500"/>
             </div>
             <div className="text-slate-400 text-xs font-bold uppercase mb-2">Tráfego Pago (Google)</div>
             
-            {/* CORREÇÃO: Usando user.paidTraffic conforme types.ts */}
             {user.paidTraffic?.active ? (
                 <>
+                    {/* CORREÇÃO: planName não existe em types.ts, então removemos || 'Ativo' */}
                     <div className="text-lg font-bold text-blue-400 flex items-center gap-2 truncate">
-                        <CheckCircle size={16}/> {user.paidTraffic.planName || 'Ativo'}
+                        <CheckCircle size={16}/> Ativo
                     </div>
                     {user.paidTraffic.currentPeriodEnd && (
                          <div className="mt-2 text-xs text-slate-500">Renova em: {new Date(user.paidTraffic.currentPeriodEnd).toLocaleDateString('pt-BR')}</div>
@@ -271,14 +272,17 @@ const DashboardHome = ({ user, onPlanSelect }: { user: User, onPlanSelect: (plan
                 <div className="text-lg font-bold text-slate-500">Não contratado</div>
             )}
          </div>
-
+        
       </div>
+      {/* Fim Status Cards */}
+
 
       <h3 className="text-2xl font-bold text-white pt-8">Contratação de Serviços Adicionais</h3>
       
+      {/* Grid de Contratação de Serviços Adicionais (4 Itens) */}
       <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-4 gap-6">
           
-          {/* Hospedagem */}
+          {/* 1. Hospedagem */}
           <div className="bg-slate-900 border border-slate-800 rounded-3xl p-8 flex flex-col">
               <div className="flex items-center gap-3 mb-4">
                   <div className="p-3 bg-amber-500/10 text-amber-500 rounded-xl"><Server size={24}/></div>
@@ -299,8 +303,9 @@ const DashboardHome = ({ user, onPlanSelect }: { user: User, onPlanSelect: (plan
                   ))}
               </div>
           </div>
+          {/* Fim Hospedagem */}
 
-          {/* Domínio */}
+          {/* 2. Domínio */}
           <div className="bg-slate-900 border border-slate-800 rounded-3xl p-8 flex flex-col">
               <div className="flex items-center gap-3 mb-4">
                   <div className="p-3 bg-pink-500/10 text-pink-500 rounded-xl"><Globe size={24}/></div>
@@ -321,8 +326,36 @@ const DashboardHome = ({ user, onPlanSelect }: { user: User, onPlanSelect: (plan
                   ))}
               </div>
           </div>
+          {/* Fim Domínio */}
 
-          {/* Suporte VIP */}
+          {/* 3. NOVO: Tráfego Pago (Card de Vendas) - (Opção 1) */}
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-8 flex flex-col border-t-4 border-t-blue-500 shadow-lg shadow-blue-900/10">
+              <div className="flex items-center gap-3 mb-4">
+                  <div className="p-3 bg-blue-500/10 text-blue-500 rounded-xl"><Megaphone size={24}/></div>
+                  <h4 className="text-xl font-bold text-white">Google Ads</h4>
+              </div>
+              <p className="text-sm text-slate-400 mb-8">Gestão profissional de tráfego pago.</p>
+              
+              <div className="space-y-3 mt-auto">
+                  {ADS_PRICES.map((opt) => ( // ESTE MAP RENDERIZA OS PREÇOS
+                      <button 
+                        key={opt.id}
+                        // O 'traffic_ads' é o addonId usado na rota de Assinatura
+                        onClick={() => handleServicePurchase('traffic_ads', { title: `Gestão Ads - ${opt.label}`, price: opt.price, details: opt.campaigns })}
+                        className="w-full flex flex-col p-4 rounded-xl border border-slate-700 hover:border-blue-500/50 hover:bg-blue-500/5 transition-all group text-left"
+                      >
+                          <div className="flex justify-between w-full mb-1">
+                             <span className="text-sm font-bold text-white group-hover:text-blue-400">{opt.label}</span>
+                             <span className="text-xs text-blue-300 bg-blue-500/10 px-2 rounded">{opt.campaigns}</span>
+                          </div>
+                          <span className="font-bold text-lg text-white">R$ {opt.price.toFixed(2)} <span className="text-sm font-normal text-slate-500">/mês</span></span>
+                      </button>
+                  ))}
+              </div>
+          </div>
+          {/* Fim Tráfego Pago (Vendas) */}
+
+          {/* 4. Suporte VIP */}
           <div className={`bg-slate-900 border border-slate-800 rounded-3xl p-8 flex flex-col relative ${!canBuySupport ? 'opacity-60' : ''}`}>
               <div className="flex items-center gap-3 mb-4">
                   <div className="p-3 bg-purple-500/10 text-purple-500 rounded-xl"><LifeBuoy size={24}/></div>
@@ -352,6 +385,7 @@ const DashboardHome = ({ user, onPlanSelect }: { user: User, onPlanSelect: (plan
                   </button>
               </div>
           </div>
+          {/* Fim Suporte VIP */}
 
       </div>
     </div>
