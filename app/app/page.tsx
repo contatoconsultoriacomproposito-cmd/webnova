@@ -5,7 +5,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Layout, Menu, X, CheckCircle, Smartphone, Globe, Code, Rocket, ChevronRight, Star, ArrowRight, Monitor, ShoppingBag, FileText, Settings, Users, LogOut, Plus, MessageSquare, ShieldCheck, Palette, Search, Headphones, ChevronLeft, Mail, CheckSquare, Square, Loader2, Server, Lock, AlertTriangle, LifeBuoy, Megaphone } from 'lucide-react';
 import { PlanType, User } from '../types';
-import { PLANS, CONTACT_PHONE_DISPLAY, CONTACT_WHATSAPP, TESTIMONIALS, PROCESS_STEPS, UPSALE_PRICE, VIP_SUPPORT_MULTIPLIER, DOMAIN_PRICES, HOSTING_PRICES } from '../constants';
+import { PLANS, CONTACT_PHONE_DISPLAY, CONTACT_WHATSAPP, TESTIMONIALS, PROCESS_STEPS, UPSALE_PRICE, VIP_SUPPORT_MULTIPLIER, DOMAIN_PRICES, HOSTING_PRICES, ADS_PRICES } from '../constants';
 import { loginWithGoogle, getCurrentUser, logout } from '../services/authService';
 import { supabase } from '../supabaseClient';
 import { redirect } from 'next/navigation'; // Adicionar import
@@ -276,7 +276,7 @@ const DashboardHome = ({ user, onPlanSelect }: { user: User, onPlanSelect: (plan
 
       <h3 className="text-2xl font-bold text-white pt-8">Contratação de Serviços Adicionais</h3>
       
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-4 gap-6">
           
           {/* Hospedagem */}
           <div className="bg-slate-900 border border-slate-800 rounded-3xl p-8 flex flex-col">
