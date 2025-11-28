@@ -190,7 +190,7 @@ const DashboardHome = ({ user, onPlanSelect }: { user: User, onPlanSelect: (plan
   }
 
   // STATE 2: HAS PLAN (Existing User) -> Show Stats & Addons
-  const canBuySupport = user.hosting?.active || user.domain?.active;
+  const canBuySupport = true; // Temporariamente liberado para venda. Para travar é só substituir o true por: user.hosting?.active || user.domain?.active;
   const currentPlanPrice = PLANS.find(p => p.id === user.plan)?.price || 0;
   const supportPrice = currentPlanPrice * VIP_SUPPORT_MULTIPLIER;
 
@@ -356,21 +356,13 @@ const DashboardHome = ({ user, onPlanSelect }: { user: User, onPlanSelect: (plan
           {/* Fim Tráfego Pago (Vendas) */}
 
           {/* 4. Suporte VIP */}
-          <div className={`bg-slate-900 border border-slate-800 rounded-3xl p-8 flex flex-col relative ${!canBuySupport ? 'opacity-60' : ''}`}>
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-8 flex flex-col relative"> 
               <div className="flex items-center gap-3 mb-4">
                   <div className="p-3 bg-purple-500/10 text-purple-500 rounded-xl"><LifeBuoy size={24}/></div>
                   <h4 className="text-xl font-bold text-white">Suporte VIP Ilimitado</h4>
               </div>
               <p className="text-sm text-slate-400 mb-8">Atendimento prioritário para ajustes no seu site.</p>
               
-              {!canBuySupport && (
-                  <div className="absolute inset-0 bg-slate-950/60 backdrop-blur-[2px] z-10 flex flex-col items-center justify-center text-center p-6 rounded-3xl border border-slate-700/50">
-                      <Lock size={32} className="text-slate-400 mb-2"/>
-                      <span className="font-bold text-white text-lg">Bloqueado</span>
-                      <span className="text-xs text-slate-400">Contrate Hospedagem ou Domínio para liberar.</span>
-                  </div>
-              )}
-
               <div className="mt-auto">
                   <div className="mb-4 p-4 bg-slate-800 rounded-xl">
                       <span className="text-xs text-slate-500 block mb-1">Preço Exclusivo (75% do plano):</span>
