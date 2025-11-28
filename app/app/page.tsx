@@ -283,7 +283,7 @@ const DashboardHome = ({ user, onPlanSelect }: { user: User, onPlanSelect: (plan
       <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-4 gap-6">
           
           {/* 1. Hospedagem */}
-          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-8 flex flex-col">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-8 flex flex-col border-t-4 border-t-amber-500 shadow-lg shadow-amber-900/10">
               <div className="flex items-center gap-3 mb-4">
                   <div className="p-3 bg-amber-500/10 text-amber-500 rounded-xl"><Server size={24}/></div>
                   <h4 className="text-xl font-bold text-white">Hospedagem Premium</h4>
@@ -306,7 +306,7 @@ const DashboardHome = ({ user, onPlanSelect }: { user: User, onPlanSelect: (plan
           {/* Fim Hospedagem */}
 
           {/* 2. Domínio */}
-          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-8 flex flex-col">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-8 flex flex-col border-t-4 border-t-pink-500 shadow-lg shadow-pink-900/10">
               <div className="flex items-center gap-3 mb-4">
                   <div className="p-3 bg-pink-500/10 text-pink-500 rounded-xl"><Globe size={24}/></div>
                   <h4 className="text-xl font-bold text-white">Domínio Personalizado</h4>
@@ -356,7 +356,7 @@ const DashboardHome = ({ user, onPlanSelect }: { user: User, onPlanSelect: (plan
           {/* Fim Tráfego Pago (Vendas) */}
 
           {/* 4. Suporte VIP */}
-          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-8 flex flex-col relative"> 
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-8 flex flex-col relative border-t-4 border-t-purple-500 shadow-lg shadow-purple-900/10"> 
               <div className="flex items-center gap-3 mb-4">
                   <div className="p-3 bg-purple-500/10 text-purple-500 rounded-xl"><LifeBuoy size={24}/></div>
                   <h4 className="text-xl font-bold text-white">Suporte VIP Ilimitado</h4>
