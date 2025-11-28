@@ -108,7 +108,7 @@ const DashboardHome = ({ user, onPlanSelect }: { user: User, onPlanSelect: (plan
   const SUPPORT_PACKAGES = [
     { calls: 3, price: 600.00, label: '3 Chamados' },
     { calls: 5, price: 750.00, label: '5 Chamados' },
-    { calls: 10, price: 1250.00, label: '10 Chamados' },
+    { calls: 8, price: 1250.00, label: '8 Chamados' },
   ];
   
   const handleServicePurchase = async (serviceType: 'domain' | 'hosting' | 'support' | 'traffic_ads', option: any) => {
