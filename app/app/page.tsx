@@ -103,6 +103,13 @@ const DashboardLayout = ({ user, children, onLogout }: any) => {
 };
 
 const DashboardHome = ({ user, onPlanSelect }: { user: User, onPlanSelect: (plan: any) => void }) => {
+
+  // 1. Definição dos novos pacotes de suporte (pode ser movida para 'constants.ts' depois)
+  const SUPPORT_PACKAGES = [
+    { calls: 3, price: 600.00, label: '3 Chamados' },
+    { calls: 5, price: 750.00, label: '5 Chamados' },
+    { calls: 10, price: 1250.00, label: '10 Chamados' },
+  ];
   
   const handleServicePurchase = async (serviceType: 'domain' | 'hosting' | 'support' | 'traffic_ads', option: any) => {
     try {
@@ -355,26 +362,26 @@ const DashboardHome = ({ user, onPlanSelect }: { user: User, onPlanSelect: (plan
           </div>
           {/* Fim Tráfego Pago (Vendas) */}
 
-          {/* 4. Suporte VIP */}
-          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-8 flex flex-col relative border-t-4 border-t-purple-500 shadow-lg shadow-purple-900/10"> 
+          {/* 4. Suporte VIP (NOVO: Pacotes de Chamados e Destaque Visual) */}
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-8 flex flex-col relative border-t-4 border-t-purple-500 shadow-lg shadow-purple-900/10">
               <div className="flex items-center gap-3 mb-4">
                   <div className="p-3 bg-purple-500/10 text-purple-500 rounded-xl"><LifeBuoy size={24}/></div>
-                  <h4 className="text-xl font-bold text-white">Suporte VIP Ilimitado</h4>
+                  <h4 className="text-xl font-bold text-white">Pacotes de Suporte</h4>
               </div>
-              <p className="text-sm text-slate-400 mb-8">Atendimento prioritário para ajustes no seu site.</p>
+              <p className="text-sm text-slate-400 mb-8">Atendimento prioritário para ajustes no seu site, cobrado por chamado.</p>
               
-              <div className="mt-auto">
-                  <div className="mb-4 p-4 bg-slate-800 rounded-xl">
-                      <span className="text-xs text-slate-500 block mb-1">Preço Exclusivo (75% do plano):</span>
-                      <span className="text-2xl font-bold text-white">R$ {supportPrice.toFixed(2)}</span>
-                  </div>
-                  <button 
-                    disabled={!canBuySupport}
-                    onClick={() => handleServicePurchase('support', { title: `Suporte VIP Ilimitado`, price: supportPrice })}
-                    className="w-full py-4 bg-purple-600 hover:bg-purple-500 text-white font-bold rounded-xl transition-all shadow-lg shadow-purple-900/20"
-                  >
-                      Contratar Agora
-                  </button>
+              <div className="space-y-3 mt-auto">
+                  {SUPPORT_PACKAGES.map((opt) => (
+                      <button 
+                        key={opt.calls}
+                        // O addonId é 'support'. O title e o price vêm da opção
+                        onClick={() => handleServicePurchase('support', { title: `Pacote de Suporte - ${opt.calls} Chamados`, price: opt.price, calls: opt.calls })}
+                        className="w-full flex justify-between items-center p-4 rounded-xl border border-slate-700 hover:border-purple-500/50 hover:bg-purple-500/5 transition-all group"
+                      >
+                          <span className="text-sm font-medium text-slate-300">{opt.label}</span>
+                          <span className="font-bold text-white group-hover:text-purple-400">R$ {opt.price.toFixed(2)}</span>
+                      </button>
+                  ))}
               </div>
           </div>
           {/* Fim Suporte VIP */}
