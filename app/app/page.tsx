@@ -5,7 +5,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Layout, Menu, X, CheckCircle, Smartphone, Globe, Code, Rocket, ChevronRight, Star, ArrowRight, Monitor, ShoppingBag, FileText, Settings, Users, LogOut, Plus, MessageSquare, ShieldCheck, Palette, Search, Headphones, ChevronLeft, Mail, CheckSquare, Square, Loader2, Server, Lock, AlertTriangle, LifeBuoy, Megaphone } from 'lucide-react';
 import { PlanType, User } from '../types';
-import { PLANS, CONTACT_PHONE_DISPLAY, CONTACT_WHATSAPP, TESTIMONIALS, PROCESS_STEPS, UPSALE_PRICE, VIP_SUPPORT_MULTIPLIER, DOMAIN_PRICES, HOSTING_PRICES, ADS_PRICES } from '../constants';
+import { PLANS, CONTACT_PHONE_DISPLAY, CONTACT_WHATSAPP, TESTIMONIALS, PROCESS_STEPS, UPSALE_PRICE, VIP_SUPPORT_MULTIPLIER, DOMAIN_PRICES, HOSTING_PRICES, ADS_PRICES, SUPPORT_PACKAGES,OFFER_HOSTING_YEARS,OFFER_DOMAIN_YEARS } from '../constants';
 import { loginWithGoogle, getCurrentUser, logout } from '../services/authService';
 import { supabase } from '../supabaseClient';
 import { redirect } from 'next/navigation'; // Adicionar import
@@ -106,9 +106,9 @@ const DashboardHome = ({ user, onPlanSelect }: { user: User, onPlanSelect: (plan
 
   // 1. Definição dos novos pacotes de suporte (pode ser movida para 'constants.ts' depois)
   const SUPPORT_PACKAGES = [
-    { calls: 3, price: 600.00, label: '3 Chamados' },
-    { calls: 5, price: 750.00, label: '5 Chamados' },
-    { calls: 8, price: 1250.00, label: '8 Chamados' },
+    { calls: 3, price: 0.99, label: '3 Chamados' },
+    { calls: 5, price: 1.99, label: '5 Chamados' },
+    { calls: 8, price: 2.99, label: '8 Chamados' },
   ];
   
   const handleServicePurchase = async (serviceType: 'domain' | 'hosting' | 'support' | 'traffic_ads', option: any) => {

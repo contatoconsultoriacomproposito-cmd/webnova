@@ -20,6 +20,20 @@ export const HOSTING_PRICES = [
   { years: 3, price: 1.68, supportsBonus: 10, label: '3 Anos' },
 ];
 
+// pacote de suportes
+export const SUPPORT_PACKAGES = [
+  { calls: 3, price: 0.99, label: '3 Chamados' },
+  { calls: 5, price: 1.99, label: '5 Chamados' },
+  { calls: 8, price: 2.99, label: '8 Chamados' },
+];
+
+// O preço da oferta agregada
+export const OFFER_HOSTING_YEARS = 1;
+export const OFFER_DOMAIN_YEARS = 1;
+export const OFFER_SUPPORT_CALLS = 3;
+export const OFFER_ADS_CAMPAIGNS = 5;
+export const ADS_OFFER_PRICE = 0.33;
+
 // O preço do Suporte VIP é calculado dinamicamente: Valor do Plano * 0.75
 export const VIP_SUPPORT_MULTIPLIER = 0.75;
 

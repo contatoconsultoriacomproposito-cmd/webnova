@@ -1,41 +1,48 @@
 import { MercadoPagoConfig, Preference } from 'mercadopago';
 import { NextResponse } from 'next/server';
-// Importa constantes e tipos subindo os níveis de pasta corretos
-import { MP_ACCESS_TOKEN, PLANS, VIP_SUPPORT_MULTIPLIER, UPSALE_PRICE } from '../../constants';
+import { 
+  MP_ACCESS_TOKEN, 
+  PLANS, 
+  SUPPORT_PACKAGES, // Adicionado
+  ADS_OFFER_PRICE, // Adicionado
+  OFFER_HOSTING_YEARS, // Adicionado
+  OFFER_DOMAIN_YEARS, // Adicionado
+  OFFER_SUPPORT_CALLS, // Adicionado
+  OFFER_ADS_CAMPAIGNS, // Adicionado
+  VIP_SUPPORT_MULTIPLIER, 
+  UPSALE_PRICE 
+} from '../../constants';
 import { PlanType } from '../../types';
 
-// Configura o cliente do Mercado Pago com sua credencial
 const client = new MercadoPagoConfig({ accessToken: MP_ACCESS_TOKEN });
 
 export async function POST(request: Request) {
   try {
-    // Validação básica da chave
     if (!MP_ACCESS_TOKEN || MP_ACCESS_TOKEN.includes('COLE_SEU_TOKEN')) {
         throw new Error("Access Token do Mercado Pago não configurado corretamente.");
     }
 
     const body = await request.json();
     const { 
-      isAddon, // Flag para identificar compra avulsa (dentro do dashboard)
+      isAddon, 
       addonTitle, 
       addonPrice,
       addonId,
       planId, 
       title, 
       price, 
-      includeHosting, 
-      includeSupport, 
-      email,
-      years,
-      calls,
-      domainName 
+      // REMOVEMOS: includeHosting e includeSupport 
+      years, // Para uso no Addon
+      calls, // Para uso no Addon
+      domainName, // Para uso no Addon
+      email 
     } = body;
 
-    // Constrói a lista de itens para o checkout
     const items = [];
 
     if (isAddon) {
         // --- FLUXO DE COMPRA AVULSA (DASHBOARD) ---
+        // O Webhook usará years e calls do metadata.
         items.push({
             id: addonId || 'addon-service',
             title: addonTitle,
@@ -44,7 +51,7 @@ export async function POST(request: Request) {
             currency_id: 'BRL',
         });
     } else {
-        // --- FLUXO DE COMPRA PADRÃO (LANDING PAGE) ---
+        // --- FLUXO DE PRIMEIRA COMPRA (LANDING PAGE) ---
         
         // 1. Item Principal: O Site
         if (planId) {
@@ -57,44 +64,53 @@ export async function POST(request: Request) {
             });
         }
 
-        // 2. Opcional: Hospedagem + Domínio
-        if (includeHosting) {
-            items.push({
-                id: 'hosting-setup',
-                title: 'Hospedagem Premium + Domínio (.com.br) - 1 Ano',
-                quantity: 1,
-                unit_price: UPSALE_PRICE, 
-                currency_id: 'BRL',
-            });
-        }
+        // 2. Add-on 1: Hospedagem (1 Ano)
+        items.push({
+            id: 'hosting',
+            title: `Hospedagem Premium - ${OFFER_HOSTING_YEARS} Ano`,
+            quantity: 1,
+            // ATENÇÃO: Use o preço correto de 1 ano aqui, substituindo a constante UPSALE_PRICE se necessário.
+            unit_price: 150.00, // Preço Fixo de 1 ano
+            currency_id: 'BRL',
+        });
 
-        // 3. Opcional: Suporte VIP
-        if (includeSupport) {
-            const plan = PLANS.find(p => p.id === planId);
-            const supportPrice = plan ? (plan.price * VIP_SUPPORT_MULTIPLIER) : 250;
-            
-            items.push({
-                id: 'vip-support',
-                title: 'Suporte VIP Ilimitado Premium',
-                quantity: 1,
-                unit_price: supportPrice,
-                currency_id: 'BRL',
-            });
-        }
+        // 3. Add-on 2: Domínio (1 Ano)
+        items.push({
+            id: 'domain',
+            title: `Domínio (.com.br) - ${OFFER_DOMAIN_YEARS} Ano`,
+            quantity: 1,
+            unit_price: 100.00, // Preço Fixo de 1 ano
+            currency_id: 'BRL',
+        });
+        
+        // 4. Add-on 3: Pacote de Suporte (3 Chamados)
+        const supportOfferPrice = SUPPORT_PACKAGES.find(p => p.calls === OFFER_SUPPORT_CALLS)?.price || 0.99;
+        items.push({
+            id: 'support',
+            title: `Pacote de Suporte - ${OFFER_SUPPORT_CALLS} Chamados`,
+            quantity: 1,
+            unit_price: supportOfferPrice,
+            currency_id: 'BRL',
+        });
+        
+        // 5. Add-on 4: Google Ads (5 Campanhas)
+        items.push({
+            id: 'traffic_ads',
+            title: `Plano Google Ads - ${OFFER_ADS_CAMPAIGNS} Campanhas`,
+            quantity: 1,
+            unit_price: ADS_OFFER_PRICE,
+            currency_id: 'BRL',
+        });
     }
 
-    // Define a URL base (Localhost ou Produção)
     const baseUrl = (process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000').replace(/\/$/, '');
 
-    // Configuração base da preferência
     const preferenceData = {
       body: {
         items: items, 
         payer: {
           email: email, 
         },
-        // CONFIGURAÇÃO DE MÉTODOS DE PAGAMENTO
-        // Listas vazias para forçar aceitação de tudo (PIX, Boleto, Cartão)
         payment_methods: {
             excluded_payment_types: [],
             excluded_payment_methods: [],
@@ -114,18 +130,13 @@ export async function POST(request: Request) {
           is_addon: isAddon ? 'true' : 'false',
           addon_id: addonId,
           plan_id: planId,
-
-          // Campos Adicionados:
-          addon_title: addonTitle, // Usado para nome do Plano de Tráfego Pago
-          years: years, // Usado para calcular a expiração de Domínio/Hospedagem
-          calls: calls, // Usado para somar os Tickets de Suporte
-          domain_name: domainName, // Usado para registrar o nome do domínio
-          payer_email: email, // Boa prática de redundância
-
-          // Campos Originais (Mantidos por compatibilidade):
-          include_hosting: includeHosting ? 'true' : 'false',
-          include_support: includeSupport ? 'true' : 'false'
-          }
+          addon_title: addonTitle, // Adicionado
+          years: years || (isAddon ? undefined : OFFER_HOSTING_YEARS), // 1 ano fixo na 1a compra
+          calls: calls || (isAddon ? undefined : OFFER_SUPPORT_CALLS), // 3 chamados fixos na 1a compra
+          domain_name: domainName,
+          payer_email: email,
+        // REMOVEMOS: include_hosting e include_support do metadata, pois usamos IDs explícitos agora
+        }
       },
     };
 
