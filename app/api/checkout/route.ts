@@ -2,21 +2,20 @@ import { MercadoPagoConfig, Preference } from 'mercadopago';
 import { NextResponse } from 'next/server';
 import { 
   MP_ACCESS_TOKEN, 
-  PLANS, 
-  SUPPORT_PACKAGES, 
-  ADS_OFFER_PRICE, 
   OFFER_HOSTING_YEARS, 
-  OFFER_DOMAIN_YEARS, 
   OFFER_SUPPORT_CALLS, 
-  OFFER_ADS_CAMPAIGNS, 
-  VIP_SUPPORT_MULTIPLIER, 
-  UPSALE_PRICE,
-  HOSTING_PRICES, // 🟢 IMPORTADO: Tabela de preços de hospedagem
-  DOMAIN_PRICES,  // 🟢 IMPORTADO: Tabela de preços de domínio
 } from '../../constants';
-import { PlanType } from '../../types';
 
 const client = new MercadoPagoConfig({ accessToken: MP_ACCESS_TOKEN });
+
+// Interface para tipar o objeto que vem do Frontend
+interface AdditionalOffer {
+    id: string;
+    title: string;
+    price: number;
+    years?: number;
+    calls?: number;
+}
 
 export async function POST(request: Request) {
   try {
@@ -36,10 +35,13 @@ export async function POST(request: Request) {
       years, 
       calls, 
       domainName, 
-      email 
+      email,
+      additionalOffers // 🟢 CORREÇÃO 1: Recebendo as ofertas que o usuário selecionou
     } = body;
 
     const items = [];
+    // Array para armazenar os IDs limpos para o Webhook saber o que liberar
+    let aggregatedAddons: string[] = []; 
 
     if (isAddon) {
         // --- FLUXO DE COMPRA AVULSA (DASHBOARD) ---
@@ -53,7 +55,7 @@ export async function POST(request: Request) {
     } else {
         // --- FLUXO DE PRIMEIRA COMPRA (OFERTA AGREGADA) ---
         
-        // 1. Item Principal: O Site
+        // 1. Item Principal: O Plano do Site
         if (planId) {
             items.push({
                 id: planId,
@@ -64,58 +66,36 @@ export async function POST(request: Request) {
             });
         }
 
-        // 2. Add-on 1: Hospedagem (1 Ano)
-        // 🟢 CORREÇÃO: Busca o preço de 1 ano na tabela HOSTING_PRICES
-        const offerHostPrice = HOSTING_PRICES.find(p => p.years === OFFER_HOSTING_YEARS)?.price || 150.00;
-        items.push({
-            id: 'hosting',
-            title: `Hospedagem Premium - ${OFFER_HOSTING_YEARS} Ano`,
-            quantity: 1,
-            unit_price: offerHostPrice, 
-            currency_id: 'BRL',
-        });
+        // 2. Processar Itens Adicionais Selecionados Dinamicamente
+        // 🟢 CORREÇÃO 2: Substituímos o código fixo por este loop
+        if (additionalOffers && Array.isArray(additionalOffers)) {
+            additionalOffers.forEach((offer: AdditionalOffer) => {
+                
+                // Mapeamento de ID: O frontend manda 'offer_domain', mas o webhook espera 'domain'
+                // para salvar corretamente no banco.
+                let cleanId = offer.id;
+                
+                if (offer.id === 'offer_domain') cleanId = 'domain';
+                if (offer.id === 'offer_hosting') cleanId = 'hosting';
+                if (offer.id === 'offer_support') cleanId = 'support';
+                if (offer.id === 'offer_ads') cleanId = 'traffic_ads'; 
 
-        // 3. Add-on 2: Domínio (1 Ano)
-        // 🟢 CORREÇÃO: Busca o preço de 1 ano na tabela DOMAIN_PRICES
-        const offerDomainPrice = DOMAIN_PRICES.find(p => p.years === OFFER_DOMAIN_YEARS)?.price || 100.00;
-        items.push({
-            id: 'domain',
-            title: `Domínio (.com.br) - ${OFFER_DOMAIN_YEARS} Ano`,
-            quantity: 1,
-            unit_price: offerDomainPrice, 
-            currency_id: 'BRL',
-        });
-        
-        // 4. Add-on 3: Pacote de Suporte (3 Chamados)
-        // O preço já estava sendo buscado corretamente na tabela SUPPORT_PACKAGES
-        const supportOfferPrice = SUPPORT_PACKAGES.find(p => p.calls === OFFER_SUPPORT_CALLS)?.price || 0.99;
-        items.push({
-            id: 'support',
-            title: `Pacote de Suporte - ${OFFER_SUPPORT_CALLS} Chamados`,
-            quantity: 1,
-            unit_price: supportOfferPrice,
-            currency_id: 'BRL',
-        });
-        
-        // 5. Add-on 4: Google Ads (5 Campanhas)
-        // O preço já estava sendo buscado corretamente na constante ADS_OFFER_PRICE
-        items.push({
-            id: 'traffic_ads',
-            title: `Plano Google Ads - ${OFFER_ADS_CAMPAIGNS} Campanhas`,
-            quantity: 1,
-            unit_price: ADS_OFFER_PRICE,
-            currency_id: 'BRL',
-        });
+                // Adiciona ao carrinho do Mercado Pago
+                items.push({
+                    id: cleanId,
+                    title: offer.title,
+                    quantity: 1,
+                    unit_price: Number(offer.price),
+                    currency_id: 'BRL',
+                });
+
+                // Adiciona à lista de metadados para o Webhook
+                aggregatedAddons.push(cleanId);
+            });
+        }
     }
 
     const baseUrl = (process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000').replace(/\/$/, '');
-
-    // 🟢 CORREÇÃO CRÍTICA: Define a lista de add-ons agregados para o Webhook
-    let aggregatedAddons: string[] = [];
-    if (!isAddon) {
-        // IDs dos itens adicionados: Hospedagem, Domínio, Suporte e Tráfego Pago
-        aggregatedAddons = ['hosting', 'domain', 'support', 'traffic_ads']; 
-    }
 
     const preferenceData = {
       body: {
@@ -148,8 +128,8 @@ export async function POST(request: Request) {
           domain_name: domainName,
           payer_email: email,
           
-          // 🟢 CAMPO VITAL: Envia a lista de serviços agregados na 1ª compra
-          aggregated_addons: aggregatedAddons.join(','),
+          // 🟢 CORREÇÃO 3: Envia a lista REAL de itens comprados no formato "hosting,domain"
+          aggregated_addons: aggregatedAddons.join(','), 
         }
       },
     };
@@ -158,10 +138,12 @@ export async function POST(request: Request) {
     let result;
 
     try {
+        // @ts-ignore - Ignorando erro de tipagem estrita do SDK se necessário
         result = await preference.create(preferenceData);
     } catch (prefError) {
         console.warn("Tentando fallback sem payment_methods...", prefError);
         delete (preferenceData.body as any).payment_methods;
+        // @ts-ignore
         result = await preference.create(preferenceData);
     }
 
