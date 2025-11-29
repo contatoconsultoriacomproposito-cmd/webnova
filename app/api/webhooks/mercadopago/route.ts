@@ -10,42 +10,41 @@ export async function POST(request: Request) {
         const url = new URL(request.url);
         
         // --- 1. EXTRAÇÃO ROBUSTA DE ID E TOPIC ---
-        
-        // 1.1 Tenta ler parâmetros da URL (para testes ou Mercado Pago antigo)
-        let topic = url.searchParams.get('topic') || url.searchParams.get('type');
-        let id = url.searchParams.get('id') || url.searchParams.get('data.id');
-        
-        // 1.2 Tenta ler parâmetros do CORPO JSON (O formato de produção do Mercado Pago)
         let bodyData: any = {};
         try {
+            // Tenta ler o corpo como JSON (Formato de produção do Mercado Pago)
             bodyData = await request.json(); 
         } catch (e) {
             // Ignora erro se o corpo não for JSON
         }
         
-        // 1.3 Prioriza o que foi encontrado: URL > Body JSON
-        topic = topic || bodyData.topic || bodyData.type;
-        id = id || bodyData.id || bodyData.data?.id;
+        // Prioriza Body JSON (Produção) > Query URL (Teste)
+        let topic = bodyData.topic || bodyData.type || url.searchParams.get('topic') || url.searchParams.get('type');
+        let id = bodyData.id || bodyData.data?.id || url.searchParams.get('id') || url.searchParams.get('data.id');
         
-        // --- FIM DA EXTRAÇÃO ---
+        // --- CORREÇÃO FINAL PARA O BUG DO VERCEL ---
+        
+        // 1. Se NÃO houver ID, ignora. (Obrigatório para buscar o pagamento)
+        if (!id) {
+            console.warn('⚠️ Webhook recebido, mas ID de pagamento ausente.');
+            return NextResponse.json({ status: 'ignored_no_id' });
+        }
 
-        // Retorna à validação de produção: topic=payment e ID são obrigatórios
-        // Este é o filtro de segurança para ignorar notificações irrelevantes
-        if (topic !== 'payment' || !id) {
-            console.warn(`⚠️ Webhook recebido, mas topic (${topic}) ou ID (${id}) ausentes/inválidos.`);
-            return NextResponse.json({ status: 'ignored' });
+        // 2. Se o TÓPICO estiver presente, mas não for relevante, ignora.
+        // Se o TÓPICO estiver ausente (bug do Vercel), a execução continua, pois o ID é suficiente para a busca.
+        if (topic && topic !== 'payment' && topic !== 'merchant_order') {
+             console.warn(`⚠️ Webhook ignorado. Tópico irrelevante: ${topic}`);
+             return NextResponse.json({ status: 'ignored_irrelevant_topic' });
         }
 
 
-        // 2. Busca os dados do pagamento (SÓ A PARTIR DAQUI O CÓDIGO É EXECUTADO)
+        // 2. Busca os dados do pagamento (A execução chega aqui se o ID for encontrado)
         const payment = new Payment(client);
         const paymentData = await payment.get({ id: id });
 
         if (paymentData.status !== 'approved') {
             return NextResponse.json({ status: 'payment_not_approved' });
         }
-
-        // 3. O RESTO DA SUA LÓGICA DE PROCESSAMENTO (Inalterado)
 
         // 1. Captura os dados críticos do Metadata
         const metadata = paymentData.metadata || {};
