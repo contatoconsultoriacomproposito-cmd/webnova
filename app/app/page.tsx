@@ -105,12 +105,7 @@ const DashboardLayout = ({ user, children, onLogout }: any) => {
 const DashboardHome = ({ user, onPlanSelect }: { user: User, onPlanSelect: (plan: any) => void }) => {
 
   // 1. Definição dos novos pacotes de suporte (pode ser movida para 'constants.ts' depois)
-  const SUPPORT_PACKAGES = [
-    { calls: 3, price: 0.99, label: '3 Chamados' },
-    { calls: 5, price: 1.99, label: '5 Chamados' },
-    { calls: 8, price: 2.99, label: '8 Chamados' },
-  ];
-  
+
   const handleServicePurchase = async (serviceType: 'domain' | 'hosting' | 'support' | 'traffic_ads', option: any) => {
     try {
         // Define qual rota chamar baseada no tipo de serviço

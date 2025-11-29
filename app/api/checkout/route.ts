@@ -3,14 +3,16 @@ import { NextResponse } from 'next/server';
 import { 
   MP_ACCESS_TOKEN, 
   PLANS, 
-  SUPPORT_PACKAGES, // Adicionado
-  ADS_OFFER_PRICE, // Adicionado
-  OFFER_HOSTING_YEARS, // Adicionado
-  OFFER_DOMAIN_YEARS, // Adicionado
-  OFFER_SUPPORT_CALLS, // Adicionado
-  OFFER_ADS_CAMPAIGNS, // Adicionado
+  SUPPORT_PACKAGES, 
+  ADS_OFFER_PRICE, 
+  OFFER_HOSTING_YEARS, 
+  OFFER_DOMAIN_YEARS, 
+  OFFER_SUPPORT_CALLS, 
+  OFFER_ADS_CAMPAIGNS, 
   VIP_SUPPORT_MULTIPLIER, 
-  UPSALE_PRICE 
+  UPSALE_PRICE,
+  HOSTING_PRICES, // 🟢 IMPORTADO: Tabela de preços de hospedagem
+  DOMAIN_PRICES,  // 🟢 IMPORTADO: Tabela de preços de domínio
 } from '../../constants';
 import { PlanType } from '../../types';
 
@@ -31,10 +33,9 @@ export async function POST(request: Request) {
       planId, 
       title, 
       price, 
-      // REMOVEMOS: includeHosting e includeSupport 
-      years, // Para uso no Addon
-      calls, // Para uso no Addon
-      domainName, // Para uso no Addon
+      years, 
+      calls, 
+      domainName, 
       email 
     } = body;
 
@@ -42,7 +43,6 @@ export async function POST(request: Request) {
 
     if (isAddon) {
         // --- FLUXO DE COMPRA AVULSA (DASHBOARD) ---
-        // O Webhook usará years e calls do metadata.
         items.push({
             id: addonId || 'addon-service',
             title: addonTitle,
@@ -51,7 +51,7 @@ export async function POST(request: Request) {
             currency_id: 'BRL',
         });
     } else {
-        // --- FLUXO DE PRIMEIRA COMPRA (LANDING PAGE) ---
+        // --- FLUXO DE PRIMEIRA COMPRA (OFERTA AGREGADA) ---
         
         // 1. Item Principal: O Site
         if (planId) {
@@ -65,25 +65,29 @@ export async function POST(request: Request) {
         }
 
         // 2. Add-on 1: Hospedagem (1 Ano)
+        // 🟢 CORREÇÃO: Busca o preço de 1 ano na tabela HOSTING_PRICES
+        const offerHostPrice = HOSTING_PRICES.find(p => p.years === OFFER_HOSTING_YEARS)?.price || 150.00;
         items.push({
             id: 'hosting',
             title: `Hospedagem Premium - ${OFFER_HOSTING_YEARS} Ano`,
             quantity: 1,
-            // ATENÇÃO: Use o preço correto de 1 ano aqui, substituindo a constante UPSALE_PRICE se necessário.
-            unit_price: 150.00, // Preço Fixo de 1 ano
+            unit_price: offerHostPrice, 
             currency_id: 'BRL',
         });
 
         // 3. Add-on 2: Domínio (1 Ano)
+        // 🟢 CORREÇÃO: Busca o preço de 1 ano na tabela DOMAIN_PRICES
+        const offerDomainPrice = DOMAIN_PRICES.find(p => p.years === OFFER_DOMAIN_YEARS)?.price || 100.00;
         items.push({
             id: 'domain',
             title: `Domínio (.com.br) - ${OFFER_DOMAIN_YEARS} Ano`,
             quantity: 1,
-            unit_price: 100.00, // Preço Fixo de 1 ano
+            unit_price: offerDomainPrice, 
             currency_id: 'BRL',
         });
         
         // 4. Add-on 3: Pacote de Suporte (3 Chamados)
+        // O preço já estava sendo buscado corretamente na tabela SUPPORT_PACKAGES
         const supportOfferPrice = SUPPORT_PACKAGES.find(p => p.calls === OFFER_SUPPORT_CALLS)?.price || 0.99;
         items.push({
             id: 'support',
@@ -94,6 +98,7 @@ export async function POST(request: Request) {
         });
         
         // 5. Add-on 4: Google Ads (5 Campanhas)
+        // O preço já estava sendo buscado corretamente na constante ADS_OFFER_PRICE
         items.push({
             id: 'traffic_ads',
             title: `Plano Google Ads - ${OFFER_ADS_CAMPAIGNS} Campanhas`,
@@ -104,6 +109,13 @@ export async function POST(request: Request) {
     }
 
     const baseUrl = (process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000').replace(/\/$/, '');
+
+    // 🟢 CORREÇÃO CRÍTICA: Define a lista de add-ons agregados para o Webhook
+    let aggregatedAddons: string[] = [];
+    if (!isAddon) {
+        // IDs dos itens adicionados: Hospedagem, Domínio, Suporte e Tráfego Pago
+        aggregatedAddons = ['hosting', 'domain', 'support', 'traffic_ads']; 
+    }
 
     const preferenceData = {
       body: {
@@ -130,12 +142,14 @@ export async function POST(request: Request) {
           is_addon: isAddon ? 'true' : 'false',
           addon_id: addonId,
           plan_id: planId,
-          addon_title: addonTitle, // Adicionado
-          years: years || (isAddon ? undefined : OFFER_HOSTING_YEARS), // 1 ano fixo na 1a compra
-          calls: calls || (isAddon ? undefined : OFFER_SUPPORT_CALLS), // 3 chamados fixos na 1a compra
+          addon_title: addonTitle, 
+          years: years || (isAddon ? undefined : OFFER_HOSTING_YEARS), 
+          calls: calls || (isAddon ? undefined : OFFER_SUPPORT_CALLS), 
           domain_name: domainName,
           payer_email: email,
-        // REMOVEMOS: include_hosting e include_support do metadata, pois usamos IDs explícitos agora
+          
+          // 🟢 CAMPO VITAL: Envia a lista de serviços agregados na 1ª compra
+          aggregated_addons: aggregatedAddons.join(','),
         }
       },
     };
