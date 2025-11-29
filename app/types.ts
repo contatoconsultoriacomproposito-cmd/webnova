@@ -7,6 +7,17 @@ export enum PlanType {
   ADMIN = 'ADMIN'
 }
 
+export interface OfferItem {
+    id: string; // Ex: 'hosting-1y', 'domain-3y', 'support-3calls'
+    title: string;
+    description: string;
+    price: number;
+    // Campos opcionais específicos do tipo de oferta
+    years?: number;
+    calls?: number;
+    campaigns?: number;
+}
+
 export interface User {
   id: string;
   name: string;

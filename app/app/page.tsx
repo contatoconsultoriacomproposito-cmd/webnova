@@ -102,6 +102,47 @@ const DashboardLayout = ({ user, children, onLogout }: any) => {
   );
 };
 
+// --- FULL OFFER ITEMS (usado no modal de pagamento) ---
+const fullOfferItems = [
+    { 
+        id: "offer_domain",
+        title: `Domínio .com.br - ${OFFER_DOMAIN_YEARS} Ano`, 
+        price: DOMAIN_PRICES.find(p => p.years === OFFER_DOMAIN_YEARS)?.price || 100.00,
+        icon: Globe, 
+        description: 'Seu nome na web garantido por um ano.',
+        years: OFFER_DOMAIN_YEARS,
+        isRecurring: false
+    },
+    { 
+        id: "offer_hosting",
+        title: `Hospedagem Premium - ${OFFER_HOSTING_YEARS} Ano`, 
+        price: HOSTING_PRICES.find(p => p.years === OFFER_HOSTING_YEARS)?.price || 150.00,
+        icon: Server, 
+        description: 'Servidores rápidos e seguros para manter seu site online.',
+        years: OFFER_HOSTING_YEARS,
+        isRecurring: false
+    },
+    { 
+        id: "offer_support",
+        title: `Pacote de Suporte - ${OFFER_SUPPORT_CALLS} Chamados`, 
+        price: SUPPORT_PACKAGES.find(p => p.calls === OFFER_SUPPORT_CALLS)?.price || 0.99,
+        icon: LifeBuoy, 
+        description: 'Atendimento prioritário para tirar dúvidas e resolver problemas.',
+        calls: OFFER_SUPPORT_CALLS,
+        isRecurring: false
+    },
+    { 
+        id: "offer_ads",
+        title: `Campanhas Google Ads - ${OFFER_ADS_CAMPAIGNS} Unidades`, 
+        price: ADS_OFFER_PRICE,
+        icon: Megaphone, 
+        description: 'Configuração e monitoramento de campanhas iniciais no Google.',
+        campaigns: OFFER_ADS_CAMPAIGNS,
+        isRecurring: false
+    },
+];
+
+
 const DashboardHome = ({ user, onPlanSelect }: { user: User, onPlanSelect: (plan: any) => void }) => {
 
   // 1. Definição dos novos pacotes de suporte (pode ser movida para 'constants.ts' depois)
@@ -152,36 +193,7 @@ const DashboardHome = ({ user, onPlanSelect }: { user: User, onPlanSelect: (plan
     const supportOfferPrice = SUPPORT_PACKAGES.find(p => p.calls === OFFER_SUPPORT_CALLS)?.price || 0.99;
     const adsOfferPrice = ADS_OFFER_PRICE; // Preço fixo da constante
 
-    const fullOfferItems = [
-        { 
-            title: `Domínio .com.br - ${OFFER_DOMAIN_YEARS} Ano`, 
-            price: offerDomainPrice, 
-            icon: Globe, 
-            description: 'Seu nome na web garantido por um ano.',
-            isIncluded: true
-        },
-        { 
-            title: `Hospedagem Premium - ${OFFER_HOSTING_YEARS} Ano`, 
-            price: offerHostPrice, 
-            icon: Server, 
-            description: 'Servidores rápidos e seguros para manter seu site online.',
-            isIncluded: true
-        },
-        { 
-            title: `Pacote de Suporte - ${OFFER_SUPPORT_CALLS} Chamados`, 
-            price: supportOfferPrice, 
-            icon: LifeBuoy, 
-            description: 'Atendimento prioritário para tirar dúvidas e resolver problemas.',
-            isIncluded: true
-        },
-        { 
-            title: `Campanhas Google Ads - ${OFFER_ADS_CAMPAIGNS} Unidades`, 
-            price: adsOfferPrice, 
-            icon: Megaphone, 
-            description: 'Configuração e monitoramento de 5 campanhas iniciais no Google.',
-            isIncluded: true
-        },
-    ];
+    
 
   // STATE 1: NO PLAN (New User) -> Show Plan Selection
   
@@ -192,29 +204,6 @@ const DashboardHome = ({ user, onPlanSelect }: { user: User, onPlanSelect: (plan
                    <h1 className="text-3xl font-bold text-white mb-2">Bem-vindo, {user.name.split(' ')[0]}! 🚀</h1>
                    <p className="text-slate-400">Para começar, escolha o plano ideal para o seu projeto.</p>
                 </div>
-
-                {/* 🟢 INSERÇÃO DO JSX DA OFERTA AQUI (Visível no topo da seleção de planos) */}
-                <div className="bg-slate-800/50 p-6 rounded-2xl border border-slate-700 shadow-xl">
-                    <h2 className="text-xl font-bold text-brand-400 mb-4 flex items-center">
-                        <Star className="w-5 h-5 mr-2" />
-                        O Plano Inclui a Oferta Agregada Exclusiva
-                    </h2>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        {fullOfferItems.map((item, index) => (
-                            <div key={index} className="flex items-center p-3 bg-slate-900 rounded-lg border border-slate-700/50">
-                                <item.icon size={20} className="text-green-500 mr-3 flex-shrink-0" />
-                                <div>
-                                    <div className="text-xs font-semibold text-white leading-tight">{item.title.split('-')[0].trim()}</div>
-                                    <div className="text-xs text-slate-400 mt-0.5">
-                                        R$ {item.price.toFixed(2).replace('.', ',')}
-                                    </div>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-                {/* 🟢 FIM DA INSERÇÃO DA OFERTA */}
-
 
                 <div className="grid md:grid-cols-2 xl:grid-cols-4 gap-6">
                     {PLANS.map((plan) => (
@@ -437,148 +426,211 @@ const DashboardHome = ({ user, onPlanSelect }: { user: User, onPlanSelect: (plan
   );
 };
 
+// 🟢 CORREÇÃO 1: Interface OfferItem definida aqui para evitar o erro 'Cannot find name'
+interface OfferItem {
+    id: string;
+    title: string;
+    description: string;
+    price: number;
+    icon: any; // Tipagem básica para componente LucideReact (usado para o ícone)
+    years?: number; // Para Hospedagem/Domínio
+    calls?: number; // Para Pacote de Suporte
+    isRecurring?: boolean; // Para Gestão de Tráfego Pago
+}
+
+
 // Payment Modal Component
-const PaymentModal = ({ plan, isOpen, onClose, currentUser }: { plan: any, isOpen: boolean, onClose: () => void, currentUser: User | null }) => {
-  const [loading, setLoading] = useState(false);
-  
-  // Estados para os Upsells
-  const [includeHosting, setIncludeHosting] = useState(false);
-  const [includeSupport, setIncludeSupport] = useState(false);
+const PaymentModal = ({ plan, isOpen, onClose, currentUser, additionalOffers }: { 
+    plan: any; 
+    isOpen: boolean; 
+    onClose: () => void; 
+    currentUser: User | null;
+    additionalOffers: OfferItem[]; // 🟢 NOVA PROP: Lista das 4 Ofertas
+}) => {
+    const [loading, setLoading] = useState(false);
+    
+    // ❌ REMOVIDOS: includeHosting e includeSupport
+    
+    // 🟢 NOVO ESTADO: Array para rastrear os IDs (id) dos itens selecionados
+    const [selectedAddons, setSelectedAddons] = useState<string[]>([]); 
 
-  // Reseta os estados quando o modal abre
-  useEffect(() => {
-    if (isOpen) {
-        setIncludeHosting(false);
-        setIncludeSupport(false);
-    }
-  }, [isOpen]);
+    // 🟢 NOVA LÓGICA DE RESET: Reseta os itens selecionados
+    useEffect(() => {
+        if (isOpen) {
+            setSelectedAddons([]); 
+        }
+    }, [isOpen]);
 
-  if (!isOpen || !plan) return null;
+    if (!isOpen || !plan) return null;
 
-  // Cálculo do Preço de Suporte VIP
-  const supportPrice = plan.price * VIP_SUPPORT_MULTIPLIER;
-  
-  // Cálculo do Total
-  const total = plan.price + (includeHosting ? UPSALE_PRICE : 0) + (includeSupport ? supportPrice : 0);
+    // ----------------------------------------------------
+    // LÓGICA DE PREÇOS
 
-  const handlePayment = async () => {
-    if (!currentUser) {
-        // Should not happen due to parent logic, but safety check
-        alert("Você precisa estar logado para continuar.");
-        return;
-    }
+    // 🟢 NOVO CÁLCULO: Encontra os objetos completos das ofertas selecionadas
+    const selectedOfferItems = additionalOffers.filter(item => selectedAddons.includes(item.id));
+    
+    // 🟢 NOVO CÁLCULO: Soma o preço de todos os adicionais selecionados
+    const addonsTotal = selectedOfferItems.reduce((sum, item) => sum + item.price, 0);
 
-    setLoading(true);
+    // 🟢 NOVO TOTAL: Plano Base + Soma dos Adicionais Selecionados
+    const total = plan.price + addonsTotal;
 
-    try {
-        // Processo de Checkout
-        const response = await fetch('/api/checkout', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                planId: plan.id,
-                title: plan.title,
-                price: plan.price,
-                includeHosting: includeHosting,
-                includeSupport: includeSupport, 
-                includeSupportPrice: includeSupport ? supportPrice : 0, 
-                email: currentUser.email // Usa email do usuário logado
-            }),
-        });
+    // ----------------------------------------------------
+    // HANDLERS
 
-        if (response.ok) {
-            const data = await response.json();
-            window.location.href = data.url; 
-        } else {
-            const errorData = await response.json();
-            const errorMessage = errorData.details || errorData.error || "Erro desconhecido";
-            alert(`Erro no Checkout: ${errorMessage}`);
+    // 🟢 NOVA FUNÇÃO: Alterna a seleção de uma oferta adicional
+    const handleAddonToggle = (id: string) => {
+        setSelectedAddons(prev => 
+            prev.includes(id) 
+                ? prev.filter(itemId => itemId !== id) 
+                : [...prev, id]
+        );
+    };
+
+    const handlePayment = async () => {
+        if (!currentUser) {
+            // Em vez de alert(), use um console.error ou um modal customizado
+            console.error("Usuário não logado para checkout.");
+            return;
+        }
+
+        setLoading(true);
+
+        try {
+            // 🟢 PREPARAÇÃO DOS ITENS SELECIONADOS PARA O CHECKOUT
+            // O checkout precisa saber quais itens adicionais (e suas propriedades) foram escolhidos.
+            const checkoutAddons = selectedOfferItems.map(item => ({
+                id: item.id,
+                title: item.title,
+                price: item.price,
+                years: item.years,
+                calls: item.calls,
+                isRecurring: item.isRecurring
+            }));
+            
+            // Processo de Checkout
+            const response = await fetch('/api/checkout', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    planId: plan.id,
+                    title: plan.title,
+                    price: plan.price,
+                    email: currentUser.email,
+                    // 🟢 ENVIA A LISTA COMPLETA DOS ADICIONAIS SELECIONADOS
+                    additionalOffers: checkoutAddons, 
+                }),
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                // Redireciona para o Mercado Pago
+                window.location.href = data.url; 
+            } else {
+                const errorData = await response.json();
+                const errorMessage = errorData.details || errorData.error || "Erro desconhecido";
+                // Lembre-se: NÃO USAR alert(). Substituí por um console.error para teste.
+                console.error(`Erro no Checkout: ${errorMessage}`);
+                setLoading(false);
+            }
+        } catch (error) {
+            console.error("Erro de conexão no pagamento:", error);
+            // Lembre-se: NÃO USAR alert(). Substituí por um console.error para teste.
+            console.error("Erro de conexão. Verifique se o servidor está rodando.");
             setLoading(false);
         }
-    } catch (error) {
-        console.error("Erro no pagamento:", error);
-        alert("Erro de conexão. Verifique se o servidor está rodando.");
-        setLoading(false);
-    }
-  };
+    };
 
-  return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/80 backdrop-blur-md" onClick={onClose}></div>
-      <div className="bg-slate-900 border border-slate-700 rounded-3xl shadow-2xl w-full max-w-lg relative z-10 overflow-hidden animate-[scaleIn_0.2s_ease-out] max-h-[90vh] overflow-y-auto">
-        <div className="bg-gradient-to-r from-brand-600 to-brand-800 p-8 text-white text-center">
-          <h3 className="text-2xl font-bold">Resumo do Pedido</h3>
-          <p className="opacity-90 mt-2 text-brand-100">Você escolheu: {plan.title}</p>
-        </div>
-        
-        <div className="p-8">
-          {/* Valor Base */}
-          <div className="flex justify-between items-center mb-6 text-lg">
-            <span className="text-slate-400">Criação do Site:</span>
-            <span className="font-bold text-2xl text-white">R$ {plan.price.toFixed(2)}</span>
-          </div>
+    // ----------------------------------------------------
+    // JSX DE RENDERIZAÇÃO
+    
+    return (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+            <div className="absolute inset-0 bg-black/80 backdrop-blur-md" onClick={onClose}></div>
+            <div className="bg-slate-900 border border-slate-700 rounded-3xl shadow-2xl w-full max-w-lg relative z-10 overflow-hidden animate-[scaleIn_0.2s_ease-out] max-h-[90vh] overflow-y-auto">
+                
+                {/* Cabeçalho */}
+                <div className="bg-gradient-to-r from-brand-600 to-brand-800 p-8 text-white text-center">
+                    <h3 className="text-2xl font-bold">Resumo do Pedido</h3>
+                    <p className="opacity-90 mt-2 text-brand-100">Você escolheu: {plan.title}</p>
+                </div>
+                
+                <div className="p-8">
+                    
+                    {/* Valor Base */}
+                    <div className="flex justify-between items-center mb-6 pb-2 border-b border-slate-700/50 text-lg">
+                        <span className="text-slate-400">Criação do Site:</span>
+                        <span className="font-bold text-2xl text-white">R$ {plan.price.toFixed(2).replace('.', ',')}</span>
+                    </div>
 
-          {/* UPSELL 1: HOSPEDAGEM */}
-          <div 
-             onClick={() => setIncludeHosting(!includeHosting)}
-             className={`border rounded-2xl p-4 mb-4 relative cursor-pointer transition-all ${includeHosting ? 'bg-amber-900/20 border-amber-500/50' : 'bg-slate-800 border-slate-700 hover:border-slate-500'}`}
-          >
-            <div className="flex items-start gap-4">
-               <div className={`p-2 rounded-full mt-1 ${includeHosting ? 'bg-amber-500 text-slate-900' : 'bg-slate-700 text-slate-400'}`}>
-                  {includeHosting ? <CheckSquare size={20} /> : <Square size={20} />}
-               </div>
-               <div>
-                   <h4 className={`font-bold text-lg ${includeHosting ? 'text-amber-400' : 'text-white'}`}>Hospedagem Premium</h4>
-                   <p className="text-sm text-slate-400 mt-1">Domínio .com.br Grátis + SSL + Emails.</p>
-                   <div className="mt-2 font-bold text-white">+ R$ {UPSALE_PRICE.toFixed(2)} <span className="text-xs font-normal text-slate-500">/ano</span></div>
-               </div>
+                    <h4 className="text-xl font-bold text-white mb-4">Serviços Adicionais (Opcional)</h4>
+                    
+                    {/* 🟢 SUBSTITUIÇÃO DO UPSELL: Mapeamento das 4 Ofertas Adicionais */}
+                    {additionalOffers.map((item) => {
+                        const isSelected = selectedAddons.includes(item.id);
+                        
+                        // Determinar o ícone (Fallback/Padrão se o icon não estiver preenchido)
+                        const IconComponent = item.icon || CheckSquare;
+
+                        return (
+                            <div 
+                                key={item.id}
+                                onClick={() => handleAddonToggle(item.id)}
+                                className={`border rounded-2xl p-4 mb-3 relative cursor-pointer transition-all ${isSelected ? 'bg-brand-900/20 border-brand-500' : 'bg-slate-800 border-slate-700 hover:border-slate-500'}`}
+                            >
+                                <div className="flex items-start gap-4">
+                                    <div className={`p-2 rounded-full mt-1 ${isSelected ? 'bg-brand-500 text-white' : 'bg-slate-700 text-slate-400'}`}>
+                                        <IconComponent size={20} />
+                                    </div>
+                                    <div className="flex-grow">
+                                        <h4 className={`font-bold text-lg ${isSelected ? 'text-brand-400' : 'text-white'}`}>{item.title}</h4>
+                                        <p className="text-sm text-slate-400 mt-1">{item.description}</p>
+                                    </div>
+                                    <div className="flex flex-col items-end justify-center h-full ml-4">
+                                        <div className="font-bold text-xl text-green-400">+ R$ {item.price.toFixed(2).replace('.', ',')}</div>
+                                        {/* Checkbox (Ações feitas no onClick do container) */}
+                                        <div className="mt-2">
+                                            {isSelected ? (
+                                                <CheckSquare size={24} className="text-brand-500" />
+                                            ) : (
+                                                <Square size={24} className="text-slate-600" />
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        );
+                    })}
+                    {/* ---------------- FIM DO MAP DAS OFERTAS ---------------- */}
+
+                    {/* Preço Total */}
+                    <div className="border-t border-slate-700 pt-6 mt-6 mb-6">
+                        <div className="flex justify-between items-center">
+                            <span className="text-lg text-slate-300">Total a Pagar:</span>
+                            <span className="text-4xl font-extrabold text-white">R$ {total.toFixed(2).replace('.', ',')}</span>
+                        </div>
+                    </div>
+
+                    <div className="space-y-4">
+                        <div className="bg-slate-800 p-3 rounded-lg text-sm text-slate-300 flex items-center gap-2">
+                            <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                            Logado como: <span className="font-bold text-white">{currentUser?.email}</span>
+                        </div>
+
+                        <button 
+                            onClick={handlePayment}
+                            disabled={loading}
+                            className="w-full py-4 bg-brand-600 hover:bg-brand-500 text-white font-bold rounded-xl transition-all shadow-lg flex items-center justify-center gap-2 disabled:opacity-50 transform hover:-translate-y-1"
+                        >
+                            {loading ? <Loader2 className="animate-spin" /> : `Ir para Pagamento`}
+                        </button>
+                    </div>
+                </div>
             </div>
-          </div>
-
-          {/* UPSELL 2: SUPORTE VIP */}
-          <div 
-             onClick={() => setIncludeSupport(!includeSupport)}
-             className={`border rounded-2xl p-4 mb-6 relative cursor-pointer transition-all ${includeSupport ? 'bg-purple-900/20 border-purple-500/50' : 'bg-slate-800 border-slate-700 hover:border-slate-500'}`}
-          >
-            <div className="flex items-start gap-4">
-               <div className={`p-2 rounded-full mt-1 ${includeSupport ? 'bg-purple-500 text-white' : 'bg-slate-700 text-slate-400'}`}>
-                  {includeSupport ? <CheckSquare size={20} /> : <Square size={20} />}
-               </div>
-               <div>
-                   <h4 className={`font-bold text-lg ${includeSupport ? 'text-purple-400' : 'text-white'}`}>Suporte VIP Ilimitado</h4>
-                   <p className="text-sm text-slate-400 mt-1">Atendimento prioritário e ajustes ilimitados.</p>
-                   <div className="mt-2 font-bold text-white">+ R$ {supportPrice.toFixed(2)} <span className="text-xs font-normal text-slate-500">/semestre</span></div>
-               </div>
-            </div>
-          </div>
-          
-          <div className="border-t border-slate-700 pt-6 mb-6">
-             <div className="flex justify-between items-center">
-                <span className="text-lg text-slate-300">Total a Pagar:</span>
-                <span className="text-3xl font-extrabold text-white">R$ {total.toFixed(2)}</span>
-             </div>
-          </div>
-
-          <div className="space-y-4">
-              <div className="bg-slate-800 p-3 rounded-lg text-sm text-slate-300 flex items-center gap-2">
-                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                  Logado como: <span className="font-bold text-white">{currentUser?.email}</span>
-              </div>
-
-              <button 
-                onClick={handlePayment}
-                disabled={loading}
-                className="w-full py-4 bg-brand-600 hover:bg-brand-500 text-white font-bold rounded-xl transition-all shadow-lg flex items-center justify-center gap-2 disabled:opacity-50 transform hover:-translate-y-1"
-              >
-                {loading ? <Loader2 className="animate-spin" /> : `Ir para Pagamento`}
-              </button>
-          </div>
         </div>
-      </div>
-    </div>
-  );
+    );
 };
 
 
@@ -670,6 +722,7 @@ export default function AppHome() {
                 onClose={() => setIsPaymentModalOpen(false)}
                 plan={selectedPlan} 
                 currentUser={currentUser}
+                additionalOffers={fullOfferItems}
             />
         </>
     );
