@@ -5,7 +5,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Layout, Menu, X, CheckCircle, Smartphone, Globe, Code, Rocket, ChevronRight, Star, ArrowRight, Monitor, ShoppingBag, FileText, Settings, Users, LogOut, Plus, MessageSquare, ShieldCheck, Palette, Search, Headphones, ChevronLeft, Mail, CheckSquare, Square, Loader2, Server, Lock, AlertTriangle, LifeBuoy, Megaphone } from 'lucide-react';
 import { PlanType, User } from '../types';
-import { PLANS, CONTACT_PHONE_DISPLAY, CONTACT_WHATSAPP, TESTIMONIALS, PROCESS_STEPS, UPSALE_PRICE, VIP_SUPPORT_MULTIPLIER, DOMAIN_PRICES, HOSTING_PRICES, ADS_PRICES, SUPPORT_PACKAGES,OFFER_HOSTING_YEARS,OFFER_DOMAIN_YEARS } from '../constants';
+import { PLANS, CONTACT_PHONE_DISPLAY, CONTACT_WHATSAPP, TESTIMONIALS, PROCESS_STEPS, UPSALE_PRICE, VIP_SUPPORT_MULTIPLIER, DOMAIN_PRICES, HOSTING_PRICES, ADS_PRICES, SUPPORT_PACKAGES,OFFER_HOSTING_YEARS,OFFER_DOMAIN_YEARS, OFFER_SUPPORT_CALLS,OFFER_ADS_CAMPAIGNS,ADS_OFFER_PRICE } from '../constants';
 import { loginWithGoogle, getCurrentUser, logout } from '../services/authService';
 import { supabase } from '../supabaseClient';
 import { redirect } from 'next/navigation'; // Adicionar import
@@ -145,56 +145,107 @@ const DashboardHome = ({ user, onPlanSelect }: { user: User, onPlanSelect: (plan
     }
   };
 
-  // STATE 1: NO PLAN (New User) -> Show Plan Selection
-  if (user.plan === PlanType.NO_PLAN) {
-    return (
-        <div className="space-y-8 max-w-6xl mx-auto">
-            <div className="text-center mb-12">
-               <h1 className="text-3xl font-bold text-white mb-2">Bem-vindo, {user.name.split(' ')[0]}! 🚀</h1>
-               <p className="text-slate-400">Para começar, escolha o plano ideal para o seu projeto.</p>
-            </div>
+  const currentPlanPrice = PLANS.find(p => p.id === user.plan)?.price || 0;
+    const supportPrice = currentPlanPrice * VIP_SUPPORT_MULTIPLIER;
+    const offerHostPrice = HOSTING_PRICES.find(p => p.years === OFFER_HOSTING_YEARS)?.price || 150.00;
+    const offerDomainPrice = DOMAIN_PRICES.find(p => p.years === OFFER_DOMAIN_YEARS)?.price || 100.00;
+    const supportOfferPrice = SUPPORT_PACKAGES.find(p => p.calls === OFFER_SUPPORT_CALLS)?.price || 0.99;
+    const adsOfferPrice = ADS_OFFER_PRICE; // Preço fixo da constante
 
-            <div className="grid md:grid-cols-2 xl:grid-cols-4 gap-6">
-                {PLANS.map((plan) => (
-                    <div key={plan.id} className={`relative bg-slate-900 rounded-3xl flex flex-col border transition-all duration-300 hover:shadow-2xl hover:-translate-y-2 ${plan.recommended ? 'border-brand-500 shadow-brand-500/20 z-10' : 'border-slate-800 hover:border-slate-700'}`}>
-                    {plan.recommended && (
-                        <div className="absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-brand-500 text-white px-4 py-1 rounded-full text-xs font-bold shadow-lg">
-                        Recomendado
-                        </div>
-                    )}
-                    <div className="p-6 flex-grow">
-                        <h3 className="text-lg font-bold text-white mb-2">{plan.title}</h3>
-                        <div className="mb-4">
-                        <span className="text-3xl font-extrabold text-white">R$ {plan.price.toFixed(2)}</span>
-                        </div>
-                        <ul className="space-y-2 mb-6">
-                        {plan.features.slice(0,3).map((feature, idx) => ( // Show only top 3 features for compact view
-                            <li key={idx} className="flex items-start gap-2 text-xs text-slate-300">
-                            <CheckCircle size={14} className="text-brand-400 flex-shrink-0 mt-0.5" />
-                            {feature}
-                            </li>
+    const fullOfferItems = [
+        { 
+            title: `Domínio .com.br - ${OFFER_DOMAIN_YEARS} Ano`, 
+            price: offerDomainPrice, 
+            icon: Globe, 
+            description: 'Seu nome na web garantido por um ano.',
+            isIncluded: true
+        },
+        { 
+            title: `Hospedagem Premium - ${OFFER_HOSTING_YEARS} Ano`, 
+            price: offerHostPrice, 
+            icon: Server, 
+            description: 'Servidores rápidos e seguros para manter seu site online.',
+            isIncluded: true
+        },
+        { 
+            title: `Pacote de Suporte - ${OFFER_SUPPORT_CALLS} Chamados`, 
+            price: supportOfferPrice, 
+            icon: LifeBuoy, 
+            description: 'Atendimento prioritário para tirar dúvidas e resolver problemas.',
+            isIncluded: true
+        },
+        { 
+            title: `Campanhas Google Ads - ${OFFER_ADS_CAMPAIGNS} Unidades`, 
+            price: adsOfferPrice, 
+            icon: Megaphone, 
+            description: 'Configuração e monitoramento de 5 campanhas iniciais no Google.',
+            isIncluded: true
+        },
+    ];
+
+  // STATE 1: NO PLAN (New User) -> Show Plan Selection
+  
+  if (user.plan === PlanType.NO_PLAN) {
+        return (
+            <div className="space-y-8 max-w-6xl mx-auto">
+                <div className="text-center mb-12">
+                   <h1 className="text-3xl font-bold text-white mb-2">Bem-vindo, {user.name.split(' ')[0]}! 🚀</h1>
+                   <p className="text-slate-400">Para começar, escolha o plano ideal para o seu projeto.</p>
+                </div>
+
+                {/* 🟢 INSERÇÃO DO JSX DA OFERTA AQUI (Visível no topo da seleção de planos) */}
+                <div className="bg-slate-800/50 p-6 rounded-2xl border border-slate-700 shadow-xl">
+                    <h2 className="text-xl font-bold text-brand-400 mb-4 flex items-center">
+                        <Star className="w-5 h-5 mr-2" />
+                        O Plano Inclui a Oferta Agregada Exclusiva
+                    </h2>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        {fullOfferItems.map((item, index) => (
+                            <div key={index} className="flex items-center p-3 bg-slate-900 rounded-lg border border-slate-700/50">
+                                <item.icon size={20} className="text-green-500 mr-3 flex-shrink-0" />
+                                <div>
+                                    <div className="text-xs font-semibold text-white leading-tight">{item.title.split('-')[0].trim()}</div>
+                                    <div className="text-xs text-slate-400 mt-0.5">
+                                        R$ {item.price.toFixed(2).replace('.', ',')}
+                                    </div>
+                                </div>
+                            </div>
                         ))}
-                        </ul>
                     </div>
-                    <div className="p-6 pt-0 mt-auto">
-                        <button 
-                        onClick={() => onPlanSelect(plan)}
-                        className="w-full py-3 bg-slate-800 text-white hover:bg-brand-600 hover:text-white border border-slate-700 rounded-xl font-bold transition-all flex items-center justify-center gap-2 text-sm"
-                        >
-                        Selecionar Plano
-                        </button>
-                    </div>
-                    </div>
-                ))}
+                </div>
+                {/* 🟢 FIM DA INSERÇÃO DA OFERTA */}
+
+
+                <div className="grid md:grid-cols-2 xl:grid-cols-4 gap-6">
+                    {PLANS.map((plan) => (
+                        // ... O restante do seu mapeamento de planos ...
+                        <div key={plan.id} className={`relative bg-slate-900 rounded-3xl flex flex-col border transition-all duration-300 hover:shadow-2xl hover:-translate-y-2 ${plan.recommended ? 'border-brand-500 shadow-brand-500/20 z-10' : 'border-slate-800 hover:border-slate-700'}`}>
+                            {/* ... */}
+                            <div className="p-6 flex-grow">
+                                <h3 className="text-lg font-bold text-white mb-2">{plan.title}</h3>
+                                <div className="mb-4">
+                                <span className="text-3xl font-extrabold text-white">R$ {plan.price.toFixed(2)}</span>
+                                </div>
+                                {/* ... features ... */}
+                            </div>
+                            <div className="p-6 pt-0 mt-auto">
+                                <button 
+                                onClick={() => onPlanSelect(plan)}
+                                className="w-full py-3 bg-slate-800 text-white hover:bg-brand-600 hover:text-white border border-slate-700 rounded-xl font-bold transition-all flex items-center justify-center gap-2 text-sm"
+                                >
+                                Selecionar Plano
+                                </button>
+                            </div>
+                        </div>
+                    ))}
+                </div>
             </div>
-        </div>
-    );
-  }
+        );
+    }
 
   // STATE 2: HAS PLAN (Existing User) -> Show Stats & Addons
   const canBuySupport = true; // Temporariamente liberado para venda. Para travar é só substituir o true por: user.hosting?.active || user.domain?.active;
-  const currentPlanPrice = PLANS.find(p => p.id === user.plan)?.price || 0;
-  const supportPrice = currentPlanPrice * VIP_SUPPORT_MULTIPLIER;
+  
 
   return (
     <div className="space-y-8 max-w-6xl mx-auto">
