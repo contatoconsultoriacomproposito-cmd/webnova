@@ -11,11 +11,11 @@ export async function POST(request: Request) {
         
         // --- 1. EXTRAÇÃO ROBUSTA DE ID E TOPIC ---
         
-        // 1.1 Tenta ler parâmetros da URL (Método do Vercel que funciona)
+        // 1.1 Tenta ler parâmetros da URL (para testes ou Mercado Pago antigo)
         let topic = url.searchParams.get('topic') || url.searchParams.get('type');
         let id = url.searchParams.get('id') || url.searchParams.get('data.id');
         
-        // 1.2 Tenta ler parâmetros do CORPO JSON (Método padrão do Mercado Pago)
+        // 1.2 Tenta ler parâmetros do CORPO JSON (O formato de produção do Mercado Pago)
         let bodyData: any = {};
         try {
             bodyData = await request.json(); 
@@ -29,18 +29,11 @@ export async function POST(request: Request) {
         
         // --- FIM DA EXTRAÇÃO ---
 
-        // 🟢 CORREÇÃO DE VALIDAÇÃO: 
-        // Se não houver ID (obrigatório para a próxima etapa), ignoramos.
-        if (!id) {
-            console.warn('⚠️ Webhook recebido, mas ID de pagamento ausente.');
-            return NextResponse.json({ status: 'ignored_no_id' });
-        }
-        
-        // Se houver ID, mas o tópico for irrelevante ('resource', 'chargeback', etc.), ignoramos.
-        // Se o tópico for nulo (devido ao bug do Vercel), a execução continua.
-        if (topic && topic !== 'payment' && topic !== 'merchant_order') {
-             console.warn(`⚠️ Webhook ignorado. Tópico irrelevante: ${topic}`);
-             return NextResponse.json({ status: 'ignored_irrelevant_topic' });
+        // Retorna à validação de produção: topic=payment e ID são obrigatórios
+        // Este é o filtro de segurança para ignorar notificações irrelevantes
+        if (topic !== 'payment' || !id) {
+            console.warn(`⚠️ Webhook recebido, mas topic (${topic}) ou ID (${id}) ausentes/inválidos.`);
+            return NextResponse.json({ status: 'ignored' });
         }
 
 
