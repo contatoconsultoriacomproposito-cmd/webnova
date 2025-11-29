@@ -116,7 +116,7 @@ export async function POST(request: Request) {
           pending: `${baseUrl}/?status=pending`,
         },
         auto_return: undefined,
-        notification_url: `${baseUrl}/api/webhooks/mercadopago`,
+        notification_url: `${baseUrl}/api/webhooks/mercadopago?id=`,
         
         metadata: {
           is_addon: isAddon ? 'true' : 'false',
