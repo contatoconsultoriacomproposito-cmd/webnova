@@ -11,17 +11,16 @@ export async function POST(request: Request) {
         
         // --- 1. EXTRAÇÃO ROBUSTA DE ID E TOPIC ---
         
-        // 1.1 Tenta ler parâmetros da URL (para testes manuais como o 'iwr')
+        // 1.1 Tenta ler parâmetros da URL (Método do Vercel que funciona)
         let topic = url.searchParams.get('topic') || url.searchParams.get('type');
         let id = url.searchParams.get('id') || url.searchParams.get('data.id');
         
-        // 1.2 Tenta ler parâmetros do CORPO JSON (como o Mercado Pago envia oficialmente)
+        // 1.2 Tenta ler parâmetros do CORPO JSON (Método padrão do Mercado Pago)
         let bodyData: any = {};
         try {
-            // Tenta ler o corpo como JSON
             bodyData = await request.json(); 
         } catch (e) {
-            // Ignora erro se o corpo não for JSON ou estiver vazio.
+            // Ignora erro se o corpo não for JSON
         }
         
         // 1.3 Prioriza o que foi encontrado: URL > Body JSON
@@ -30,18 +29,30 @@ export async function POST(request: Request) {
         
         // --- FIM DA EXTRAÇÃO ---
 
-
-        if (topic !== 'payment' || !id) {
-            console.warn('⚠️ Webhook recebido, mas topic ou ID ausentes/inválidos.');
-            return NextResponse.json({ status: 'ignored' });
+        // 🟢 CORREÇÃO DE VALIDAÇÃO: 
+        // Se não houver ID (obrigatório para a próxima etapa), ignoramos.
+        if (!id) {
+            console.warn('⚠️ Webhook recebido, mas ID de pagamento ausente.');
+            return NextResponse.json({ status: 'ignored_no_id' });
+        }
+        
+        // Se houver ID, mas o tópico for irrelevante ('resource', 'chargeback', etc.), ignoramos.
+        // Se o tópico for nulo (devido ao bug do Vercel), a execução continua.
+        if (topic && topic !== 'payment' && topic !== 'merchant_order') {
+             console.warn(`⚠️ Webhook ignorado. Tópico irrelevante: ${topic}`);
+             return NextResponse.json({ status: 'ignored_irrelevant_topic' });
         }
 
+
+        // 2. Busca os dados do pagamento (SÓ A PARTIR DAQUI O CÓDIGO É EXECUTADO)
         const payment = new Payment(client);
         const paymentData = await payment.get({ id: id });
 
         if (paymentData.status !== 'approved') {
             return NextResponse.json({ status: 'payment_not_approved' });
         }
+
+        // 3. O RESTO DA SUA LÓGICA DE PROCESSAMENTO (Inalterado)
 
         // 1. Captura os dados críticos do Metadata
         const metadata = paymentData.metadata || {};
@@ -107,11 +118,14 @@ export async function POST(request: Request) {
                 updateData.paidTraffic = { active: true, planName: addonTitle || 'Plano Ads', currentPeriodEnd: expiryMonth.toISOString() };
             }
             else if (addonId === 'support') {
-                // Apenas soma os chamados comprados
-                const currentTickets = typeof userProfile.supportTicketsRemaining === 'number' ? userProfile.supportTicketsRemaining : 0;
-                if (userProfile.supportTicketsRemaining !== 'unlimited') {
-                    updateData.supportTicketsRemaining = currentTickets + supportCallsToAdd;
-                }
+                 // Ativa o flag visual e prioridade por 1 mês
+                 updateData.vipSupport = { active: true, expiryDate: expiryMonth.toISOString() }; 
+
+                 // Soma os chamados comprados
+                 const currentTickets = typeof userProfile.supportTicketsRemaining === 'number' ? userProfile.supportTicketsRemaining : 0;
+                 if (userProfile.supportTicketsRemaining !== 'unlimited') {
+                     updateData.supportTicketsRemaining = currentTickets + supportCallsToAdd;
+                 }
             }
         } 
         
@@ -143,11 +157,12 @@ export async function POST(request: Request) {
 
                 // Processa Pacote de Suporte (3 Chamados)
                 if (aggregatedAddons.includes('support')) {
-                    // Soma os chamados comprados
-                    const currentTickets = typeof userProfile.supportTicketsRemaining === 'number' ? userProfile.supportTicketsRemaining : 0;
-                    if (userProfile.supportTicketsRemaining !== 'unlimited') {
-                        updateData.supportTicketsRemaining = currentTickets + supportCallsToAdd;
-                    }
+                     updateData.vipSupport = { active: true, expiryDate: expiryMonth.toISOString() };
+                     // Soma os chamados comprados
+                     const currentTickets = typeof userProfile.supportTicketsRemaining === 'number' ? userProfile.supportTicketsRemaining : 0;
+                     if (userProfile.supportTicketsRemaining !== 'unlimited') {
+                         updateData.supportTicketsRemaining = currentTickets + supportCallsToAdd;
+                     }
                 }
             }
         }
