@@ -8,16 +8,16 @@ export const UPSALE_PRICE = 0.50; // Mantido para compatibilidade com testes ant
 
 // Domínio
 export const DOMAIN_PRICES = [
-  { years: 1, price: 100.00, supportsBonus: 3, label: '1 Ano' },
-  { years: 2, price: 180.00, supportsBonus: 5, label: '2 Anos' },
-  { years: 3, price: 250.00, supportsBonus: 10, label: '3 Anos' },
+  { years: 1, price: 1.17, supportsBonus: 3, label: '1 Ano' },
+  { years: 2, price: 1.27, supportsBonus: 5, label: '2 Anos' },
+  { years: 3, price: 1.37, supportsBonus: 10, label: '3 Anos' },
 ];
 
 // Hospedagem
 export const HOSTING_PRICES = [
-  { years: 1, price: 150.00, supportsBonus: 3, label: '1 Ano' },
-  { years: 2, price: 275.00, supportsBonus: 5, label: '2 Anos' },
-  { years: 3, price: 350.00, supportsBonus: 10, label: '3 Anos' },
+  { years: 1, price: 1.48, supportsBonus: 3, label: '1 Ano' },
+  { years: 2, price: 1.58, supportsBonus: 5, label: '2 Anos' },
+  { years: 3, price: 1.68, supportsBonus: 10, label: '3 Anos' },
 ];
 
 // O preço do Suporte VIP é calculado dinamicamente: Valor do Plano * 0.75
@@ -26,9 +26,9 @@ export const VIP_SUPPORT_MULTIPLIER = 0.75;
 // Serviços de Assinatura
 // ⚠️ NOVO CAMPO: Preço Mensal da Gestão de Tráfego Pago
 export const ADS_PRICES = [
-  { campaigns: 'Até 5 Campanhas', price: 750.00, id: 'ads_basic', label: 'Iniciante' },
-  { campaigns: '6 a 10 Campanhas', price: 1250.00, id: 'ads_pro', label: 'Profissional' },
-  { campaigns: '11 a 20 Campanhas', price: 2500.00, id: 'ads_advanced', label: 'Empresarial' }
+  { campaigns: 'Até 5 Campanhas', price: 1.79, id: 'ads_basic', label: 'Iniciante' },
+  { campaigns: '6 a 10 Campanhas', price: 1.89, id: 'ads_pro', label: 'Profissional' },
+  { campaigns: '11 a 20 Campanhas', price: 1.99, id: 'ads_advanced', label: 'Empresarial' }
 ];
 
 // CREDENCIAIS DO MERCADO PAGO
@@ -41,7 +41,7 @@ export const PLANS: PlanDetails[] = [
   {
     id: PlanType.ONE_PAGE,
     title: 'One Page / Landing Page',
-    price: 697.00,
+    price: 1.00,
     description: 'Ideal para campanhas de vendas e profissionais liberais.',
     features: [
       'Site de página única (rolagem)',
@@ -54,7 +54,7 @@ export const PLANS: PlanDetails[] = [
   {
     id: PlanType.INSTITUTIONAL,
     title: 'Institucional',
-    price: 997.00,
+    price: 2.00,
     description: 'Para empresas que precisam apresentar seus serviços.',
     features: [
       'Até 5 páginas',
@@ -68,7 +68,7 @@ export const PLANS: PlanDetails[] = [
   {
     id: PlanType.BLOG,
     title: 'Portal de Notícias / Blog',
-    price: 1997.00,
+    price: 3.00,
     description: 'Site dinâmico para produtores de conteúdo.',
     features: [
       'Área Administrativa para Posts',
@@ -81,7 +81,7 @@ export const PLANS: PlanDetails[] = [
   {
     id: PlanType.ECOMMERCE,
     title: 'Loja Virtual',
-    price: 2997.00,
+    price: 4.00,
     description: 'Venda seus produtos online com segurança.',
     features: [
       'Cadastro de Produtos e Categorias',

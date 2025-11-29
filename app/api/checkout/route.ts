@@ -25,7 +25,10 @@ export async function POST(request: Request) {
       price, 
       includeHosting, 
       includeSupport, 
-      email 
+      email,
+      years,
+      calls,
+      domainName 
     } = body;
 
     // Constrói a lista de itens para o checkout
@@ -111,9 +114,18 @@ export async function POST(request: Request) {
           is_addon: isAddon ? 'true' : 'false',
           addon_id: addonId,
           plan_id: planId,
+
+          // Campos Adicionados:
+          addon_title: addonTitle, // Usado para nome do Plano de Tráfego Pago
+          years: years, // Usado para calcular a expiração de Domínio/Hospedagem
+          calls: calls, // Usado para somar os Tickets de Suporte
+          domain_name: domainName, // Usado para registrar o nome do domínio
+          payer_email: email, // Boa prática de redundância
+
+          // Campos Originais (Mantidos por compatibilidade):
           include_hosting: includeHosting ? 'true' : 'false',
           include_support: includeSupport ? 'true' : 'false'
-        }
+          }
       },
     };
 
