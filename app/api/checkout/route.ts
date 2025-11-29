@@ -36,7 +36,8 @@ export async function POST(request: Request) {
       calls, 
       domainName, 
       email,
-      additionalOffers // 🟢 CORREÇÃO 1: Recebendo as ofertas que o usuário selecionou
+      userId, // 🟢 NOVO: Agora recebendo o ID do usuário (CRÍTICO para PIX/Boleto)
+      additionalOffers 
     } = body;
 
     const items = [];
@@ -67,12 +68,10 @@ export async function POST(request: Request) {
         }
 
         // 2. Processar Itens Adicionais Selecionados Dinamicamente
-        // 🟢 CORREÇÃO 2: Substituímos o código fixo por este loop
         if (additionalOffers && Array.isArray(additionalOffers)) {
             additionalOffers.forEach((offer: AdditionalOffer) => {
                 
                 // Mapeamento de ID: O frontend manda 'offer_domain', mas o webhook espera 'domain'
-                // para salvar corretamente no banco.
                 let cleanId = offer.id;
                 
                 if (offer.id === 'offer_domain') cleanId = 'domain';
@@ -103,6 +102,9 @@ export async function POST(request: Request) {
         payer: {
           email: email, 
         },
+        // 🟢 CORREÇÃO CRÍTICA: Adiciona o ID do usuário para o Webhook buscar
+        external_reference: userId, 
+        
         payment_methods: {
             excluded_payment_types: [],
             excluded_payment_methods: [],
@@ -116,6 +118,7 @@ export async function POST(request: Request) {
           pending: `${baseUrl}/?status=pending`,
         },
         auto_return: undefined,
+        // ✅ Mantido para contornar o bug de roteamento do Vercel
         notification_url: `${baseUrl}/api/webhooks/mercadopago?id=`,
         
         metadata: {
@@ -126,9 +129,10 @@ export async function POST(request: Request) {
           years: years || (isAddon ? undefined : OFFER_HOSTING_YEARS), 
           calls: calls || (isAddon ? undefined : OFFER_SUPPORT_CALLS), 
           domain_name: domainName,
+          // O payer_email é redundante, mas mantido por segurança. 
+          // A busca principal agora é pelo external_reference (userId)
           payer_email: email,
           
-          // 🟢 CORREÇÃO 3: Envia a lista REAL de itens comprados no formato "hosting,domain"
           aggregated_addons: aggregatedAddons.join(','), 
         }
       },

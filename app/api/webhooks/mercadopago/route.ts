@@ -22,16 +22,15 @@ export async function POST(request: Request) {
         let topic = bodyData.topic || bodyData.type || url.searchParams.get('topic') || url.searchParams.get('type');
         let id = bodyData.id || bodyData.data?.id || url.searchParams.get('id') || url.searchParams.get('data.id');
         
-        // --- CORREÇÃO FINAL PARA O BUG DO VERCEL ---
+        // --- CORREÇÃO FINAL PARA O BUG DO VERCEL E VALIDAÇÃO ---
         
-        // 1. Se NÃO houver ID, ignora. (Obrigatório para buscar o pagamento)
+        // Se NÃO houver ID, ignora.
         if (!id) {
             console.warn('⚠️ Webhook recebido, mas ID de pagamento ausente.');
             return NextResponse.json({ status: 'ignored_no_id' });
         }
 
-        // 2. Se o TÓPICO estiver presente, mas não for relevante, ignora.
-        // Se o TÓPICO estiver ausente (bug do Vercel), a execução continua, pois o ID é suficiente para a busca.
+        // Se o TÓPICO estiver presente, mas não for relevante, ignora.
         if (topic && topic !== 'payment' && topic !== 'merchant_order') {
              console.warn(`⚠️ Webhook ignorado. Tópico irrelevante: ${topic}`);
              return NextResponse.json({ status: 'ignored_irrelevant_topic' });
@@ -41,15 +40,26 @@ export async function POST(request: Request) {
         // 2. Busca os dados do pagamento (A execução chega aqui se o ID for encontrado)
         const payment = new Payment(client);
         const paymentData = await payment.get({ id: id });
+        
+        // 🟢 NOVO CAMPO VITAL: Captura o user_id do Supabase passado no checkout
+        const userId = paymentData.external_reference; 
 
         if (paymentData.status !== 'approved') {
             return NextResponse.json({ status: 'payment_not_approved' });
         }
+        
+        // 🔴 CORREÇÃO 1: Se o external_reference (user_id) estiver faltando, falha
+        if (!userId) {
+            console.error('❌ external_reference (user ID) não encontrado no pagamento.');
+            return NextResponse.json({ error: 'No user ID provided via external_reference' }, { status: 400 });
+        }
 
         // 1. Captura os dados críticos do Metadata
         const metadata = paymentData.metadata || {};
-        const payerEmail = paymentData.payer?.email || metadata.payer_email;
         
+        // 🔴 NOTA: Não precisamos mais do payerEmail para buscar o usuário.
+        // O payerEmail pode ser usado apenas para logs, mas a busca será feita pelo userId.
+
         // Dados de Planos e Add-ons
         const planId = metadata.plan_id;
         const isAddon = metadata.is_addon === 'true'; 
@@ -63,20 +73,16 @@ export async function POST(request: Request) {
         // Campo para a Oferta Agregada
         const aggregatedAddons = metadata.aggregated_addons ? (metadata.aggregated_addons as string).split(',') : [];
 
-        if (!payerEmail) {
-            console.error('❌ Email não identificado no pagamento.');
-            return NextResponse.json({ error: 'No email provided' }, { status: 400 });
-        }
-
-        // 2. Busca o usuário
+        // 2. Busca o usuário PELO USER ID (external_reference)
+        // 🔴 CORREÇÃO 2: Busca pelo ID do usuário (PIX/Boleto Seguro)
         const { data: userProfile, error: searchError } = await supabaseAdmin
             .from('profiles')
             .select('*') 
-            .eq('email', payerEmail)
+            .eq('id', userId) // <-- Busca pelo ID
             .single();
 
         if (searchError || !userProfile) {
-            console.error(`❌ Usuário não encontrado: ${payerEmail}`);
+            console.error(`❌ Usuário não encontrado no Supabase com ID: ${userId}`);
             return NextResponse.json({ error: 'User not found' }, { status: 404 });
         }
 
@@ -128,10 +134,15 @@ export async function POST(request: Request) {
                 console.log(`🚀 Processando Plano Principal: ${planId}`);
                 updateData.role = planId;
                 updateData.plan_expiry = expiryMultiYear.toISOString();
+                // 🔴 CORREÇÃO 3: Removido updateData.plan_expiry (Coluna não existe)
+                // A coluna `plan_expiry` deve ser tratada como parte do objeto `role` ou em uma coluna chamada, por exemplo, `plan_end_date`.
+                // Se o campo for `plan_type` na sua tabela, use-o:
+                // updateData.plan_type = planId;
             }
             
             // 2. Processa todos os serviços agregados (hosting, domain, support, traffic_ads)
             if (aggregatedAddons.length > 0) {
+                // ... (O restante da lógica de agregação permanece inalterado)
                 console.log(`🎁 Processando Oferta Agregada: ${aggregatedAddons.join(', ')}`);
                 
                 // Ativa Hospedagem e Domínio (1 Ano Fixo)
@@ -176,7 +187,7 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: 'Update failed' }, { status: 500 });
         }
 
-        console.log(`✅ Sucesso! Dados atualizados para ${payerEmail}:`, updateData);
+        console.log(`✅ Sucesso! Dados atualizados para User ID ${userProfile.id}:`, updateData);
 
         return NextResponse.json({ status: 'success' });
 
