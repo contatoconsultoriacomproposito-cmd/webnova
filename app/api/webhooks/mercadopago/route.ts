@@ -28,7 +28,7 @@ export async function POST(request: Request) {
     
     // Dados de Planos e Add-ons
     const planId = metadata.plan_id;
-    const isAddon = metadata.is_addon === 'true'; // Convertido de string para boolean
+    const isAddon = metadata.is_addon === 'true'; 
     const addonId = metadata.addon_id; 
     const addonTitle = metadata.addon_title;
 
@@ -36,7 +36,7 @@ export async function POST(request: Request) {
     const purchaseYears = metadata.years ? parseInt(metadata.years) : 0; 
     const supportCallsToAdd = metadata.calls ? parseInt(metadata.calls) : 0;
     
-    // 🟢 NOVO CAMPO PARA A OFERTA AGREGADA
+    // Campo para a Oferta Agregada
     const aggregatedAddons = metadata.aggregated_addons ? (metadata.aggregated_addons as string).split(',') : [];
 
     if (!payerEmail) {
@@ -53,7 +53,6 @@ export async function POST(request: Request) {
 
     if (searchError || !userProfile) {
         console.error(`❌ Usuário não encontrado: ${payerEmail}`);
-        // Considerar criar o usuário aqui se for o fluxo de primeira compra
         return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
@@ -61,13 +60,13 @@ export async function POST(request: Request) {
     let updateData: any = {};
     const now = new Date();
     
-    // Calcula a data de expiração para o período comprado (uso na compra avulsa ou se years for 1)
+    // Calcula a data de expiração para o período comprado
     const expiryMultiYear = new Date();
     if (purchaseYears > 0) {
         expiryMultiYear.setFullYear(now.getFullYear() + purchaseYears);
     }
     
-    // Data para Mensalidades (Ads/Suporte VIP)
+    // Data para Mensalidades (Ads)
     const expiryMonth = new Date();
     expiryMonth.setMonth(now.getMonth() + 1);
 
@@ -87,8 +86,7 @@ export async function POST(request: Request) {
             updateData.paidTraffic = { active: true, planName: addonTitle || 'Plano Ads', currentPeriodEnd: expiryMonth.toISOString() };
         }
         else if (addonId === 'support') {
-             updateData.vipSupport = { active: true, expiryDate: expiryMonth.toISOString() };
-             // Soma os chamados comprados
+             // Apenas soma os chamados comprados
              const currentTickets = typeof userProfile.supportTicketsRemaining === 'number' ? userProfile.supportTicketsRemaining : 0;
              if (userProfile.supportTicketsRemaining !== 'unlimited') {
                  updateData.supportTicketsRemaining = currentTickets + supportCallsToAdd;
@@ -102,7 +100,7 @@ export async function POST(request: Request) {
         if (planId) {
             console.log(`🚀 Processando Plano Principal: ${planId}`);
             updateData.role = planId;
-            updateData.plan_expiry = expiryMultiYear.toISOString(); // Expiração baseada no 'years' (que será 1 da Offer)
+            updateData.plan_expiry = expiryMultiYear.toISOString();
         }
         
         // 2. Processa todos os serviços agregados (hosting, domain, support, traffic_ads)
@@ -111,7 +109,6 @@ export async function POST(request: Request) {
             
             // Ativa Hospedagem e Domínio (1 Ano Fixo)
             if (aggregatedAddons.includes('hosting')) {
-                // Usa purchaseYears que virá como 1 do metadata do checkout
                 updateData.hosting = { active: true, expiryDate: expiryMultiYear.toISOString(), planYears: purchaseYears }; 
             }
             if (aggregatedAddons.includes('domain')) {
@@ -123,10 +120,9 @@ export async function POST(request: Request) {
                 updateData.paidTraffic = { active: true, planName: 'Oferta Google Ads (5 Camp.)', currentPeriodEnd: expiryMonth.toISOString() };
             }
 
-            // Ativa Pacote de Suporte (3 Chamados)
+            // Processa Pacote de Suporte (3 Chamados)
             if (aggregatedAddons.includes('support')) {
-                 updateData.vipSupport = { active: true, expiryDate: expiryMonth.toISOString() };
-                 // Soma os chamados comprados (que virá como 3 do metadata do checkout)
+                 // Soma os chamados comprados
                  const currentTickets = typeof userProfile.supportTicketsRemaining === 'number' ? userProfile.supportTicketsRemaining : 0;
                  if (userProfile.supportTicketsRemaining !== 'unlimited') {
                      updateData.supportTicketsRemaining = currentTickets + supportCallsToAdd;
