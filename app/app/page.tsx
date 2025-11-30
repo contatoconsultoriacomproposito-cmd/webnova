@@ -162,7 +162,7 @@ const DashboardHome = ({ user, onPlanSelect }: { user: User, onPlanSelect: (plan
                 email: user.email,
                 title: option.title,
                 price: option.price,
-                
+                userId: user.id, // 🟢 ADICIONAR ESTA LINHA: Envia o ID do usuário
                 // Campos comuns para a rota padrão (checkout) - Usados para Domínio, Hospedagem e Suporte
                 isAddon: true,
                 addonTitle: option.title,
@@ -519,6 +519,7 @@ const PaymentModal = ({ plan, isOpen, onClose, currentUser, additionalOffers }: 
                     title: plan.title,
                     price: plan.price,
                     email: currentUser.email,
+                    userId: currentUser.id, // 🟢 ADICIONAR ESTA LINHA: Envia o ID do usuário
                     // 🟢 ENVIA A LISTA COMPLETA DOS ADICIONAIS SELECIONADOS
                     additionalOffers: checkoutAddons, 
                 }),
