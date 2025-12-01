@@ -133,10 +133,13 @@ const SupportModal = ({ isOpen, onClose, user, refreshUser }: { isOpen: boolean,
             
             const { error } = await supabase
                 .from('profiles')
-                .update({ support_tickets_remaining: newCount })
+                .update({ supportTicketsRemaining: newCount })
                 .eq('id', user.id);
 
-            if (error) throw error;
+            if (error) {
+                console.error("ERRO SUPABASE DETALHADO:", error); 
+                throw error;
+            }
 
             refreshUser();
 
