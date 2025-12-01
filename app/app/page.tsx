@@ -3,17 +3,15 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Layout, Menu, X, CheckCircle, Smartphone, Globe, Code, Rocket, ChevronRight, Star, ArrowRight, Monitor, ShoppingBag, FileText, Settings, Users, LogOut, Plus, MessageSquare, ShieldCheck, Palette, Search, Headphones, ChevronLeft, Mail, CheckSquare, Square, Loader2, Server, Lock, AlertTriangle, LifeBuoy, Megaphone } from 'lucide-react';
+import { Layout, Menu, X, CheckCircle, Smartphone, Globe, Code, Rocket, ChevronRight, Star, ArrowRight, Monitor, ShoppingBag, FileText, Settings, Users, LogOut, Plus, MessageSquare, ShieldCheck, Palette, Search, Headphones, ChevronLeft, Mail, CheckSquare, Square, Loader2, Server, Lock, AlertTriangle, LifeBuoy, Megaphone, Send } from 'lucide-react';
 import { PlanType, User } from '../types';
-import { PLANS, CONTACT_PHONE_DISPLAY, CONTACT_WHATSAPP, TESTIMONIALS, PROCESS_STEPS, UPSALE_PRICE, VIP_SUPPORT_MULTIPLIER, DOMAIN_PRICES, HOSTING_PRICES, ADS_PRICES, SUPPORT_PACKAGES,OFFER_HOSTING_YEARS,OFFER_DOMAIN_YEARS, OFFER_SUPPORT_CALLS,OFFER_ADS_CAMPAIGNS,ADS_OFFER_PRICE } from '../constants';
-import { logout } from '../services/authService'; // Removido getCurrentUser pois faremos a busca direta
+import { PLANS, CONTACT_PHONE_DISPLAY, CONTACT_WHATSAPP, TESTIMONIALS, PROCESS_STEPS, UPSALE_PRICE, VIP_SUPPORT_MULTIPLIER, DOMAIN_PRICES, HOSTING_PRICES, ADS_PRICES, SUPPORT_PACKAGES, OFFER_HOSTING_YEARS, OFFER_DOMAIN_YEARS, OFFER_SUPPORT_CALLS, OFFER_ADS_CAMPAIGNS, ADS_OFFER_PRICE } from '../constants';
+import { logout } from '../services/authService';
 import { supabase } from '../supabaseClient';
 import { redirect, useRouter } from 'next/navigation';
 
 // --- INTERFACES AUXILIARES ---
 
-// Esta interface representa EXATAMENTE o que vem do seu Banco de Dados (Supabase)
-// Baseado na imagem e CSV que você enviou.
 interface DBProfile {
     id: string;
     full_name: string;
@@ -22,26 +20,19 @@ interface DBProfile {
     role: string;
     created_at: string;
     plan_expiry: string | null;
-    hosting: any;                
-    domain: any;                 
-    // Adicionamos as colunas JSON com a variação de case, mas focamos no mapeamento
-    vipSupport?: any;            // CamelCase
-    
-    paidTraffic?: any;           // CamelCase
-    
-    // Coluna exata que você usa
-    supportTicketsRemaining: number; 
+    hosting: any;
+    domain: any;
+    vipSupport?: any;
+    paidTraffic?: any;
+    supportTicketsRemaining: number;
 }
 
-// 🟢 SOLUÇÃO DO PROBLEMA: Função para garantir que JSON é Objeto, não String
+// Helper JSON Parse
 const safeJSONParse = (data: any) => {
     if (data === null || data === undefined) return { active: false };
-
-    // If already object, return as-is but normalize boolean-like strings
     if (typeof data === 'object') {
-        // normalize boolean-like strings inside object (very defensive)
         try {
-            const clone = JSON.parse(JSON.stringify(data)); // deep clone
+            const clone = JSON.parse(JSON.stringify(data));
             Object.keys(clone).forEach((k) => {
                 if (clone[k] === 'true') clone[k] = true;
                 if (clone[k] === 'false') clone[k] = false;
@@ -51,48 +42,30 @@ const safeJSONParse = (data: any) => {
             return data;
         }
     }
-
     if (typeof data === 'string') {
         const trimmed = data.trim();
-
-        // Handle double-encoded JSON: e.g. "\"{...}\"" or stringified JSON with extra quotes
         try {
             let parsed: any = JSON.parse(trimmed);
-
-            // If parsed is still a string that looks like JSON (double-encoded), parse again
             if (typeof parsed === 'string') {
-                try {
-                    parsed = JSON.parse(parsed);
-                } catch {
-                    // leave parsed as string
-                }
+                try { parsed = JSON.parse(parsed); } catch { }
             }
-
-            // Final normalization of boolean-like values inside parsed object
             if (typeof parsed === 'object' && parsed !== null) {
                 Object.keys(parsed).forEach((k) => {
                     if (parsed[k] === 'true') parsed[k] = true;
                     if (parsed[k] === 'false') parsed[k] = false;
                 });
             }
-
             return parsed;
         } catch (err) {
-            console.warn("safeJSONParse: não conseguiu parsear string para JSON:", trimmed.slice(0, 200));
             return { active: false };
         }
     }
-
-    // Fallback
     return { active: false };
 };
 
-// --- HELPER DE NORMALIZAÇÃO ---
-// Esta função converte os dados do banco (snake_case/incorretos) para o padrão da App (User)
+// Normalização do Usuário
 const normalizeUser = (dbUser: DBProfile, authEmail?: string): User => {
-    // defensive checks & logs (very useful while debugging)
     if (!dbUser) {
-        console.error("normalizeUser recebeu dbUser vazio");
         return {
             id: '',
             name: 'Usuário',
@@ -104,43 +77,146 @@ const normalizeUser = (dbUser: DBProfile, authEmail?: string): User => {
         } as User;
     }
 
-    // Try multiple possible keys (defensive)
     const hostingData = safeJSONParse((dbUser as any).hosting ?? (dbUser as any).hosting_info ?? null);
     const domainData = safeJSONParse((dbUser as any).domain ?? (dbUser as any).domain_info ?? null);
-
     const vipSupportData = safeJSONParse((dbUser as any).vipSupport ?? (dbUser as any).vipsupport ?? (dbUser as any).vip_support ?? null);
     const paidTrafficData = safeJSONParse((dbUser as any).paidTraffic ?? (dbUser as any).paidtraffic ?? (dbUser as any).paid_traffic ?? null);
+    
+    // CORREÇÃO 1: Garantir conversão segura para Number aqui
+    const rawTickets = (dbUser as any).supportTicketsRemaining ?? (dbUser as any).support_tickets_remaining ?? (dbUser as any).supportTicket ?? 0;
+    const supportTickets = typeof rawTickets === 'string' ? Number(rawTickets) : Number(rawTickets);
 
-    const supportTickets = (dbUser as any).supportTicketsRemaining ?? (dbUser as any).support_tickets_remaining ?? (dbUser as any).supportTicket ?? 0;
-
-    const user: User = {
+    return {
         id: dbUser.id,
         name: dbUser.full_name || 'Usuário',
         email: dbUser.email || authEmail || '',
         avatarUrl: dbUser.avatar_url,
         plan: ((dbUser.role as PlanType) || PlanType.NO_PLAN),
         planExpiry: dbUser.plan_expiry || undefined,
-        supportTicketsRemaining: typeof supportTickets === 'string' ? Number(supportTickets) || 0 : supportTickets,
+        supportTicketsRemaining: isNaN(supportTickets) ? 0 : supportTickets, // Fallback final para 0
         hosting: hostingData,
         domain: domainData,
         vipSupport: vipSupportData,
         paidTraffic: paidTrafficData,
     };
+};
 
-    // Warnings to detect mismatched column names or unexpected shapes
-    if (!((dbUser as any).hosting) && !((dbUser as any).hosting_info)) {
-        console.warn("normalizeUser: coluna 'hosting' ausente no profile (verifique nomes/permissões). Keys:", Object.keys(dbUser));
-    }
-    if (!((dbUser as any).domain)) {
-        console.warn("normalizeUser: coluna 'domain' ausente no profile (keys list)", Object.keys(dbUser));
-    }
+// --- MODAL DE SUPORTE VIP ---
+const SupportModal = ({ isOpen, onClose, user, refreshUser }: { isOpen: boolean, onClose: () => void, user: User, refreshUser: () => void }) => {
+    const [loading, setLoading] = useState(false);
+    const [formData, setFormData] = useState({
+        name: user.name || '',
+        whatsapp: '',
+        email: user.email || '',
+        siteLink: '',
+        message: ''
+    });
 
-    return user;
+    if (!isOpen) return null;
+
+    // CORREÇÃO 2: Criar variável segura convertida para Number para uso local
+    const currentTickets = Number(user.supportTicketsRemaining || 0);
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        
+        // CORREÇÃO 3: Usar a variável segura na comparação
+        if (currentTickets <= 0) {
+            alert("Você não possui tickets de suporte suficientes.");
+            return;
+        }
+        setLoading(true);
+
+        try {
+            // CORREÇÃO 4: Usar a variável segura na matemática
+            const newCount = currentTickets - 1;
+            
+            const { error } = await supabase
+                .from('profiles')
+                .update({ support_tickets_remaining: newCount })
+                .eq('id', user.id);
+
+            if (error) throw error;
+
+            refreshUser();
+
+            const text = `*Nova Solicitação de Suporte VIP*\n\n` +
+                         `👤 *Cliente:* ${formData.name}\n` +
+                         `📧 *Email:* ${formData.email}\n` +
+                         `📱 *WhatsApp:* ${formData.whatsapp}\n` +
+                         `🌐 *Site:* ${formData.siteLink}\n\n` +
+                         `📝 *Solicitação:* ${formData.message}`;
+
+            const encodedText = encodeURIComponent(text);
+            const whatsappUrl = `https://wa.me/5548996536507?text=${encodedText}`;
+
+            window.open(whatsappUrl, '_blank');
+            onClose();
+
+        } catch (error) {
+            console.error("Erro ao processar suporte:", error);
+            alert("Erro ao debitar ticket de suporte. Tente novamente.");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    return (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center p-4">
+            <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={onClose}></div>
+            <div className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-md relative z-10 p-6 shadow-2xl">
+                <div className="flex justify-between items-center mb-6">
+                    <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                        <Headphones className="text-brand-500" /> Abrir Chamado VIP
+                    </h3>
+                    <button onClick={onClose} className="text-slate-400 hover:text-white"><X size={24}/></button>
+                </div>
+
+                <div className="mb-4 bg-brand-900/20 border border-brand-500/30 p-3 rounded-lg flex justify-between items-center">
+                    <span className="text-brand-200 text-sm">Tickets Disponíveis:</span>
+                    <span className="text-brand-400 font-bold text-lg">{currentTickets}</span>
+                </div>
+
+                <form onSubmit={handleSubmit} className="space-y-4">
+                    <div>
+                        <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Nome Completo</label>
+                        <input required type="text" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="w-full bg-slate-800 border border-slate-700 rounded-lg p-3 text-white focus:border-brand-500 outline-none" />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <label className="block text-xs font-bold text-slate-400 uppercase mb-1">WhatsApp</label>
+                            <input required type="text" placeholder="(DD) 99999-9999" value={formData.whatsapp} onChange={e => setFormData({...formData, whatsapp: e.target.value})} className="w-full bg-slate-800 border border-slate-700 rounded-lg p-3 text-white focus:border-brand-500 outline-none" />
+                        </div>
+                        <div>
+                            <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Email</label>
+                            <input required type="email" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} className="w-full bg-slate-800 border border-slate-700 rounded-lg p-3 text-white focus:border-brand-500 outline-none" />
+                        </div>
+                    </div>
+                    <div>
+                        <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Link do Site</label>
+                        <input required type="url" placeholder="https://..." value={formData.siteLink} onChange={e => setFormData({...formData, siteLink: e.target.value})} className="w-full bg-slate-800 border border-slate-700 rounded-lg p-3 text-white focus:border-brand-500 outline-none" />
+                    </div>
+                    <div>
+                        <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Solicitação</label>
+                        <textarea required rows={4} placeholder="Descreva o que você precisa..." value={formData.message} onChange={e => setFormData({...formData, message: e.target.value})} className="w-full bg-slate-800 border border-slate-700 rounded-lg p-3 text-white focus:border-brand-500 outline-none resize-none" />
+                    </div>
+
+                    <button disabled={loading} type="submit" className="w-full bg-brand-600 hover:bg-brand-500 text-white font-bold py-3 rounded-xl transition-all flex items-center justify-center gap-2 mt-4">
+                        {loading ? <Loader2 className="animate-spin" /> : <><Send size={18} /> Enviar Solicitação (-1 Ticket)</>}
+                    </button>
+                </form>
+            </div>
+        </div>
+    );
 };
 
 // --- DASHBOARD COMPONENTS ---
 
-const DashboardLayout = ({ user, children, onLogout }: any) => {
+const DashboardLayout = ({ user, children, onLogout, onOpenSupport }: any) => {
+  // CORREÇÃO 5: Garantir que é número antes de verificar se é > 0
+  const tickets = Number(user.supportTicketsRemaining || 0);
+  const hasTickets = tickets > 0;
+
   return (
     <div className="min-h-screen bg-slate-950 flex">
       {/* Sidebar */}
@@ -164,7 +240,7 @@ const DashboardLayout = ({ user, children, onLogout }: any) => {
             <Layout size={20} className="text-brand-400" /> Visão Geral
           </button>
 
-          {/* Only show extra menu items if user has a real plan */}
+          {/* User Specific Menus */}
           {user.plan !== PlanType.NO_PLAN && (
             <>
                 {(user.plan === PlanType.BLOG || user.plan === PlanType.ADMIN) && (
@@ -184,12 +260,19 @@ const DashboardLayout = ({ user, children, onLogout }: any) => {
                     </>
                 )}
 
-                <button className="w-full flex items-center gap-3 px-4 py-3 text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl transition-all">
-                    <MessageSquare size={20} /> Suporte VIP
-                </button>
-                
-                <button className="w-full flex items-center gap-3 px-4 py-3 text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl transition-all">
-                    <Settings size={20} /> Configurações
+                {/* Botão Suporte VIP com Lógica de Tickets */}
+                <button 
+                    onClick={onOpenSupport}
+                    disabled={!hasTickets}
+                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
+                        hasTickets 
+                        ? 'text-slate-400 hover:text-white hover:bg-slate-800 cursor-pointer' 
+                        : 'text-slate-700 cursor-not-allowed bg-slate-800/30'
+                    }`}
+                >
+                    <MessageSquare size={20} /> 
+                    <span className="flex-grow text-left">Suporte VIP</span>
+                    {!hasTickets && <Lock size={14} />}
                 </button>
             </>
           )}
@@ -227,7 +310,7 @@ const DashboardLayout = ({ user, children, onLogout }: any) => {
   );
 };
 
-// --- FULL OFFER ITEMS ---
+// --- FULL OFFER ITEMS (AUX) ---
 const fullOfferItems = [
     { 
         id: "offer_domain",
@@ -311,7 +394,7 @@ const DashboardHome = ({ user, onPlanSelect }: { user: User, onPlanSelect: (plan
                    <h1 className="text-3xl font-bold text-white mb-2">Bem-vindo, {user.name.split(' ')[0]}! 🚀</h1>
                    <p className="text-slate-400">Para começar, escolha o plano ideal para o seu projeto.</p>
                 </div>
-                {/* LISTA DE PLANOS (RESUMIDA PARA O EXEMPLO) */}
+                {/* LISTA DE PLANOS */}
                 <div className="grid md:grid-cols-2 xl:grid-cols-4 gap-6">
                     {PLANS.map((plan) => (
                         <div key={plan.id} className={`relative bg-slate-900 rounded-3xl flex flex-col border transition-all duration-300 hover:shadow-2xl hover:-translate-y-2 ${plan.recommended ? 'border-brand-500 shadow-brand-500/20 z-10' : 'border-slate-800 hover:border-slate-700'}`}>
@@ -336,7 +419,7 @@ const DashboardHome = ({ user, onPlanSelect }: { user: User, onPlanSelect: (plan
         );
     }
 
-  // STATE 2: HAS PLAN
+  // STATE 2: HAS PLAN - DASHBOARD PRINCIPAL
   return (
     <div className="space-y-8 max-w-6xl mx-auto">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -350,15 +433,13 @@ const DashboardHome = ({ user, onPlanSelect }: { user: User, onPlanSelect: (plan
         </div>
       </div>
 
-      {/* STATUS CARDS COM CORREÇÃO DE DATA */}
+      {/* STATUS CARDS */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6"> 
          
          {/* Card 1: Plano */}
          <div className="bg-slate-900 p-6 rounded-2xl shadow-lg border border-slate-800">
             <div className="text-slate-400 text-xs font-bold uppercase mb-2">Plano Atual</div>
             <div className="text-lg font-bold text-white truncate">{PLANS.find(p => p.id === user.plan)?.title || user.plan}</div>
-            
-            {/* CORREÇÃO: new Date(...) antes do toLocaleDateString */}
             <div className="mt-2 text-xs text-slate-500">
                 Expira em: {user.planExpiry ? new Date(user.planExpiry).toLocaleDateString('pt-BR') : 'Vitalício'}
             </div>
@@ -368,14 +449,9 @@ const DashboardHome = ({ user, onPlanSelect }: { user: User, onPlanSelect: (plan
          <div className="bg-slate-900 p-6 rounded-2xl shadow-lg border border-slate-800">
             <div className="text-slate-400 text-xs font-bold uppercase mb-2">Suporte Técnico</div>
             <div className="text-2xl font-bold text-white">
-                {user.supportTicketsRemaining === -1 ? 'Ilimitado' : `${user.supportTicketsRemaining} Restantes`}
+                {/* CORREÇÃO 6: Uso seguro do ticket para exibição */}
+                {Number(user.supportTicketsRemaining || 0) === -1 ? 'Ilimitado' : `${Number(user.supportTicketsRemaining || 0)} Restantes`}
             </div>
-            {user.vipSupport?.active && (
-                <div className="mt-2 text-xs text-purple-400 font-bold">
-                    {/* CORREÇÃO: Converter string JSON para Date */}
-                    VIP Ativo até {user.vipSupport.expiryDate ? new Date(user.vipSupport.expiryDate).toLocaleDateString('pt-BR') : '...'}
-                </div>
-            )}
          </div>
 
          {/* Card 3: Hospedagem */}
@@ -385,7 +461,6 @@ const DashboardHome = ({ user, onPlanSelect }: { user: User, onPlanSelect: (plan
                 <>
                     <div className="text-lg font-bold text-green-400 flex items-center gap-2"><CheckCircle size={16}/> Ativa</div>
                     <div className="mt-2 text-xs text-slate-500">
-                        {/* CORREÇÃO: Converter string JSON para Date */}
                         Vence em: {user.hosting.expiryDate ? new Date(user.hosting.expiryDate).toLocaleDateString('pt-BR') : '...'}
                     </div>
                 </>
@@ -401,7 +476,6 @@ const DashboardHome = ({ user, onPlanSelect }: { user: User, onPlanSelect: (plan
                 <>
                     <div className="text-lg font-bold text-white truncate">{user.domain.domainName || 'Configurado'}</div>
                     <div className="mt-2 text-xs text-slate-500">
-                        {/* CORREÇÃO: Converter string JSON para Date */}
                         Vence em: {user.domain.expiryDate ? new Date(user.domain.expiryDate).toLocaleDateString('pt-BR') : '...'}
                     </div>
                 </>
@@ -424,7 +498,6 @@ const DashboardHome = ({ user, onPlanSelect }: { user: User, onPlanSelect: (plan
                     </div>
                     {user.paidTraffic.currentPeriodEnd && (
                          <div className="mt-2 text-xs text-slate-500">
-                            {/* CORREÇÃO: Converter string JSON para Date */}
                             Renova em: {new Date(user.paidTraffic.currentPeriodEnd).toLocaleDateString('pt-BR')}
                          </div>
                     )}
@@ -433,33 +506,98 @@ const DashboardHome = ({ user, onPlanSelect }: { user: User, onPlanSelect: (plan
                 <div className="text-lg font-bold text-slate-500">Não contratado</div>
             )}
          </div>
-        
       </div>
       
-      {/* SEÇÃO DE CONTRATAÇÃO (Mantida igual ao original, resumida aqui para focar no erro) */}
+      {/* SEÇÃO DE CONTRATAÇÃO DINÂMICA */}
       <h3 className="text-2xl font-bold text-white pt-8">Contratação de Serviços Adicionais</h3>
       <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-4 gap-6">
-          {/* Card Hospedagem */}
-          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-8 flex flex-col border-t-4 border-t-amber-500 shadow-lg shadow-amber-900/10">
-              <div className="flex items-center gap-3 mb-4">
-                  <div className="p-3 bg-amber-500/10 text-amber-500 rounded-xl"><Server size={24}/></div>
-                  <h4 className="text-xl font-bold text-white">Hospedagem</h4>
-              </div>
-              <div className="space-y-3 mt-auto">
-                  {HOSTING_PRICES.map((opt) => (
-                      <button 
-                        key={opt.years}
-                        onClick={() => handleServicePurchase('hosting', { title: `Hospedagem (${opt.years} Anos)`, price: opt.price })}
-                        className="w-full flex justify-between items-center p-4 rounded-xl border border-slate-700 hover:border-amber-500/50 hover:bg-amber-500/5 transition-all group"
-                      >
-                          <span className="text-sm font-medium text-slate-300">{opt.label}</span>
-                          <span className="font-bold text-white group-hover:text-amber-400">R$ {opt.price.toFixed(2)}</span>
-                      </button>
-                  ))}
-              </div>
+
+          {/* 1. Card Hospedagem (Mostra se NÃO tiver hospedagem) */}
+          {!user.hosting?.active && (
+            <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 flex flex-col border-t-4 border-t-amber-500 shadow-lg shadow-amber-900/10">
+                <div className="flex items-center gap-3 mb-4">
+                    <div className="p-3 bg-amber-500/10 text-amber-500 rounded-xl"><Server size={24}/></div>
+                    <h4 className="text-xl font-bold text-white">Hospedagem</h4>
+                </div>
+                <div className="space-y-3 mt-auto">
+                    {HOSTING_PRICES.map((opt) => (
+                        <button 
+                            key={opt.years}
+                            onClick={() => handleServicePurchase('hosting', { title: `Hospedagem (${opt.years} Anos)`, price: opt.price })}
+                            className="w-full flex justify-between items-center p-3 rounded-xl border border-slate-700 hover:border-amber-500/50 hover:bg-amber-500/5 transition-all group"
+                        >
+                            <span className="text-sm font-medium text-slate-300">{opt.label}</span>
+                            <span className="font-bold text-white group-hover:text-amber-400">R$ {opt.price.toFixed(2)}</span>
+                        </button>
+                    ))}
+                </div>
+            </div>
+          )}
+
+          {/* 2. Card Domínio (Mostra se NÃO tiver domínio) */}
+          {!user.domain?.active && (
+            <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 flex flex-col border-t-4 border-t-cyan-500 shadow-lg shadow-cyan-900/10">
+                <div className="flex items-center gap-3 mb-4">
+                    <div className="p-3 bg-cyan-500/10 text-cyan-500 rounded-xl"><Globe size={24}/></div>
+                    <h4 className="text-xl font-bold text-white">Domínio .com.br</h4>
+                </div>
+                <div className="space-y-3 mt-auto">
+                    {DOMAIN_PRICES.map((opt) => (
+                        <button 
+                            key={opt.years}
+                            onClick={() => handleServicePurchase('domain', { title: `Domínio (${opt.years} Anos)`, price: opt.price })}
+                            className="w-full flex justify-between items-center p-3 rounded-xl border border-slate-700 hover:border-cyan-500/50 hover:bg-cyan-500/5 transition-all group"
+                        >
+                            <span className="text-sm font-medium text-slate-300">{opt.label}</span>
+                            <span className="font-bold text-white group-hover:text-cyan-400">R$ {opt.price.toFixed(2)}</span>
+                        </button>
+                    ))}
+                </div>
+            </div>
+          )}
+
+          {/* 3. Card Tráfego Pago (Mostra se NÃO tiver tráfego pago) */}
+          {!user.paidTraffic?.active && (
+            <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 flex flex-col border-t-4 border-t-blue-500 shadow-lg shadow-blue-900/10">
+                <div className="flex items-center gap-3 mb-4">
+                    <div className="p-3 bg-blue-500/10 text-blue-500 rounded-xl"><Megaphone size={24}/></div>
+                    <h4 className="text-xl font-bold text-white">Google Ads</h4>
+                </div>
+                <div className="space-y-3 mt-auto">
+                    {ADS_PRICES.map((opt) => (
+                        <button 
+                            key={opt.campaigns}
+                            onClick={() => handleServicePurchase('traffic_ads', { title: `Google Ads (${opt.campaigns} campanhas)`, price: opt.price })}
+                            className="w-full flex justify-between items-center p-3 rounded-xl border border-slate-700 hover:border-blue-500/50 hover:bg-blue-500/5 transition-all group"
+                        >
+                            <span className="text-sm font-medium text-slate-300">{opt.label}</span>
+                            <span className="font-bold text-white group-hover:text-blue-400">R$ {opt.price.toFixed(2)}</span>
+                        </button>
+                    ))}
+                </div>
+            </div>
+          )}
+
+          {/* 4. Card Suporte Extra (SEMPRE VISÍVEL) */}
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 flex flex-col border-t-4 border-t-purple-500 shadow-lg shadow-purple-900/10">
+                <div className="flex items-center gap-3 mb-4">
+                    <div className="p-3 bg-purple-500/10 text-purple-500 rounded-xl"><LifeBuoy size={24}/></div>
+                    <h4 className="text-xl font-bold text-white">Mais Suporte</h4>
+                </div>
+                <div className="space-y-3 mt-auto">
+                    {SUPPORT_PACKAGES.map((opt) => (
+                        <button 
+                            key={opt.calls}
+                            onClick={() => handleServicePurchase('support', { title: `Pacote Suporte (${opt.calls} chamados)`, price: opt.price })}
+                            className="w-full flex justify-between items-center p-3 rounded-xl border border-slate-700 hover:border-purple-500/50 hover:bg-purple-500/5 transition-all group"
+                        >
+                            <span className="text-sm font-medium text-slate-300">{opt.label}</span>
+                            <span className="font-bold text-white group-hover:text-purple-400">R$ {opt.price.toFixed(2)}</span>
+                        </button>
+                    ))}
+                </div>
           </div>
-          {/* ... Outros cards de serviço (mantidos como estavam) ... */}
-          {/* Apenas fechando a div para o exemplo compilar */}
+
       </div>
     </div>
   );
@@ -621,53 +759,45 @@ export default function AppHome() {
     const [loadingSession, setLoadingSession] = useState(true);
     const [selectedPlan, setSelectedPlan] = useState<any>(null);
     const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
+    
+    const [isSupportModalOpen, setIsSupportModalOpen] = useState(false);
+    
     const mounted = useRef(true);
-
     const router = useRouter();
 
     // ===============================
     // 1. CARREGAR USUÁRIO DO SUPABASE
     // ===============================
-    useEffect(() => {
-        const fetchUserData = async () => {
-            try {
-                const { data: { session } } = await supabase.auth.getSession();
+    const fetchUserData = async () => {
+        try {
+            const { data: { session } } = await supabase.auth.getSession();
 
-                if (session?.user) {
-                    const { data: profile, error } = await supabase
-                        .from('profiles')
-                        .select('*')
-                        .eq('id', session.user.id)
-                        .single();
+            if (session?.user) {
+                const { data: profile, error } = await supabase
+                    .from('profiles')
+                    .select('*')
+                    .eq('id', session.user.id)
+                    .single();
 
-                    if (error) throw error;
+                if (error) throw error;
 
-                    console.groupCollapsed("DEBUG: profile raw from supabase");
-                    console.log(profile);
-                    console.groupEnd();
-
-                    if (profile && mounted.current) {
-                        const normalizedUser = normalizeUser(
-                            profile as unknown as DBProfile,
-                            session.user.email
-                        );
-
-                        console.groupCollapsed("DEBUG: normalizedUser");
-                        console.log(normalizedUser);
-                        console.groupEnd();
-
-                        setCurrentUser(normalizedUser);
-                    }
+                if (profile && mounted.current) {
+                    const normalizedUser = normalizeUser(
+                        profile as unknown as DBProfile,
+                        session.user.email
+                    );
+                    setCurrentUser(normalizedUser);
                 }
-            } catch (error) {
-                console.error("Erro ao carregar usuário:", error);
-            } finally {
-                if (mounted.current) setLoadingSession(false);
             }
-        };
+        } catch (error) {
+            console.error("Erro ao carregar usuário:", error);
+        } finally {
+            if (mounted.current) setLoadingSession(false);
+        }
+    };
 
+    useEffect(() => {
         fetchUserData();
-
         const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
             if (_event === 'SIGNED_IN' && session) fetchUserData();
             if (_event === 'SIGNED_OUT') setCurrentUser(null);
@@ -680,7 +810,7 @@ export default function AppHome() {
     }, []);
 
     // =====================================
-    // 2. PROTEGER A ROTA (CLIENT-SIDE GUARD)
+    // 2. PROTEGER A ROTA
     // =====================================
     useEffect(() => {
         if (!loadingSession && !currentUser) {
@@ -699,12 +829,7 @@ export default function AppHome() {
         );
     }
 
-    // ========================================
-    // 4. EVITA RENDERIZAR SEM currentUser
-    // ========================================
-    if (!currentUser) {
-        return null; // apenas até o redirect ocorrer
-    }
+    if (!currentUser) return null;
 
     // ===============================
     // 5. HANDLERS
@@ -728,7 +853,11 @@ export default function AppHome() {
     // ===============================
     return (
         <>
-            <DashboardLayout user={currentUser} onLogout={handleLogout}>
+            <DashboardLayout 
+                user={currentUser} 
+                onLogout={handleLogout}
+                onOpenSupport={() => setIsSupportModalOpen(true)}
+            >
                 <DashboardHome 
                     user={currentUser} 
                     onPlanSelect={handlePlanSelect} 
@@ -741,6 +870,13 @@ export default function AppHome() {
                 plan={selectedPlan}
                 currentUser={currentUser}
                 additionalOffers={fullOfferItems}
+            />
+
+            <SupportModal 
+                isOpen={isSupportModalOpen}
+                onClose={() => setIsSupportModalOpen(false)}
+                user={currentUser}
+                refreshUser={fetchUserData}
             />
         </>
     );
