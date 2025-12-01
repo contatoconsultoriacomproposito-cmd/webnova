@@ -14,7 +14,7 @@ import { PlanType, User } from './types';
 import { PLANS, CONTACT_PHONE_DISPLAY, CONTACT_WHATSAPP, TESTIMONIALS, PROCESS_STEPS } from './constants';
 import { loginWithGoogle, getCurrentUser, logout } from './services/authService';
 import { supabase } from './supabaseClient';
-import { redirect } from 'next/navigation';
+import { useRouter  } from 'next/navigation';
 
 // --- DADOS LOCAIS PARA AS NOVAS SEÇÕES (Adicionei aqui para garantir funcionamento imediato) ---
 
@@ -185,20 +185,6 @@ const Navbar = ({ onLoginClick, onScrollTo, user }: { onLoginClick: () => void, 
   );
 };
 
-const AuthRedirector = ({ currentUser }: { currentUser: User | null }) => {
-    const [isClient, setIsClient] = useState(false);
-    useEffect(() => { setIsClient(true); }, []);
-
-    if (!isClient || !currentUser) return null; 
-
-    const bypassAuth = window.location.search.includes('bypassAuth=true');
-
-    if (currentUser && !bypassAuth) {
-        redirect('/app');
-        return null;
-    }
-    return null;
-};
 
 // --- HERO REVISADO: Foco em Benefício ---
 const Hero = ({ onCtaClick, onPortfolioClick }: { onCtaClick: () => void, onPortfolioClick: () => void }) => (
@@ -825,6 +811,7 @@ export default function Home() {
   const [selectedPlan, setSelectedPlan] = useState<any>(null);
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const mounted = useRef(true);
+  const router = useRouter();
 
   useEffect(() => {
       const fetchUser = async () => {
@@ -836,7 +823,7 @@ export default function Home() {
       
       const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
         if (_event === 'SIGNED_IN' && session) {
-          redirect('/app');
+          router.push('/app');
         }
       });
 
@@ -844,7 +831,7 @@ export default function Home() {
         mounted.current = false;
         subscription.unsubscribe();
       };
-  }, []);
+  }, [router]);
 
   const handlePlanSelect = (plan: any) => {
     if (!currentUser) {
@@ -865,7 +852,7 @@ export default function Home() {
 
   return (
     <>
-      <AuthRedirector currentUser={currentUser} />
+      
       <LandingPage 
         onPlanSelect={handlePlanSelect} 
         onLoginClick={() => setIsLoginOpen(true)}
