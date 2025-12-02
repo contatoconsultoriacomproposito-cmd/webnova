@@ -813,7 +813,7 @@ export default function AppHome() {
     }, []);
 
     // =====================================
-    // 2. PROTEGER A ROTA
+    // 2. PROTEGER A ROTA CORRETA
     // =====================================
     useEffect(() => {
         if (!loadingSession && !currentUser) {
