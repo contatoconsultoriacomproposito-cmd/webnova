@@ -249,7 +249,7 @@ const Section = ({ id, title, subtitle, bg = "dark", children }: any) => (
 
 // --- NOVA SEÇÃO: PORTFÓLIO ---
 const PortfolioSection = () => (
-  <Section id="portfolio" title="Resultados que falam por si" subtitle="Veja alguns projetos recentes entregues pela equipe 321site e o impacto gerado." bg="darker">
+  <Section id="portfolio" title="Alguns modelos que criamos" subtitle="Aqui você pode avaliar a melhor necessidade do seu negócio." bg="darker">
     <div className="grid md:grid-cols-3 gap-8">
       {PORTFOLIO_ITEMS.map((item) => (
         <div key={item.id} className="group relative rounded-2xl overflow-hidden cursor-pointer border border-slate-800 hover:border-brand-500/50 transition-all">
