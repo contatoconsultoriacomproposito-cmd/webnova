@@ -143,8 +143,8 @@ export const TESTIMONIALS: Testimonial[] = [
   {
     id: 5,
     name: "Roberto Campos",
-    role: "Corretor de Imóveis",
-    content: "A integração com o WhatsApp facilitou muito meu atendimento. Vendo muito mais imóveis agora que o site é rápido.",
+    role: "Dentista",
+    content: "Frequentemente recebo clientes vindos do Google que acessaram meu site e se impressionaram. a 321Site faz um exímio trabalho.",
     avatar: "https://randomuser.me/api/portraits/men/22.jpg",
     rating: 5
   },

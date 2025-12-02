@@ -21,50 +21,50 @@ import { useRouter  } from 'next/navigation';
 const PORTFOLIO_ITEMS = [
   {
     id: 1,
-    title: "Landing Page de Alta Conversão",
-    category: "HotSite",
+    title: "Página de Vendas com Alta Conversão",
+    category: "Landing Page",
     image: "https://images.unsplash.com/photo-1467232004584-a241de8bcf5d?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80",
-    result: "Ideal para vendas de alto impacto",
+    result: "Ideal para promoção de único produto",
     highlight: false
   },
   {
     id: 2,
-    title: "Profissionais Liberais e Autônomos",
+    title: "Página Única com Autoridade Máxima",
     category: "OnePage",
     image: "https://plus.unsplash.com/premium_photo-1663045633178-69156beda8d8?q=80&w=1170&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
-    result: "Esteja bem posicionado no Google",
+    result: "Ideal para MEI e Profissionais Liberais",
     highlight: false 
   },
   {
     id: 3,
-    title: "Advocacia, Contabilidade e Clínicas",
+    title: "Múltiplas Páginas com Detalhamento Estratégico",
     category: "Site Institucional",
     image: "https://images.unsplash.com/photo-1497366216548-37526070297c?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80",
-    result: "Credibilidade e autoridade digital",
+    result: "Ideal para Micro Empresa e EPP",
     highlight: false
   },
   {
     id: 4,
-    title: "Tech News Portal",
+    title: "Portais e Blogs",
     category: "Blog / Notícias",
     image: "https://images.unsplash.com/photo-1504711434969-e33886168f5c?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80",
-    result: "Otimizado para AdSense e SEO",
+    result: "Ideal para Engajamento e Publicações Frequentes",
     highlight: false
   },
   {
     id: 5,
-    title: "Boutique Fashion",
+    title: "Comércio On-line",
     category: "Loja Virtual / E-commerce",
     image: "https://images.unsplash.com/photo-1441986300917-64674bd600d8?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80",
-    result: "+150% em vendas online",
+    result: "Ideal para quem já tem uma loja física e quer expandir no On-line",
     highlight: false
   },
   {
     id: 6,
-    title: "Nexus SaaS Dashboard",
+    title: "Sistema Web",
     category: "SaaS / Sistema Web",
     image: "https://images.unsplash.com/photo-1551288049-bebda4e38f71?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80",
-    result: "Gestão completa em tempo real",
+    result: "Ideal para quem quer desenvolver seu próprio software de gestão",
     highlight: true // Destaque especial solicitado
   }
 
@@ -74,20 +74,20 @@ const EXTRA_SERVICES = [
   {
     icon: Code,
     title: "Desenvolvimento SaaS",
-    description: "Tire sua ideia de software do papel. Criamos sitemas escaláveis para seu negócio.",
+    description: "Tire sua ideia de software do papel e escale seu negócio.",
     badge: "Sob Medida"
   },
   {
     icon: Zap,
-    title: "Automação (n8n/Make/Opal)",
+    title: "Automação",
     description: "Automatize processos repetitivos e integre seu CRM, WhatsApp e planilhas.",
     badge: "Produtividade"
   },
   {
     icon: BarChart3,
-    title: "Google Ads, Meta Ads e Tráfego",
-    description: "Gestão profissional de tráfego pago para colocar seu novo site no topo das buscas.",
-    badge: "Vendas"
+    title: "Sistema Web",
+    description: "Crie seu próprio sistema de gestão on-line. Tudo do seu jeito e com sua marca.",
+    badge: "Gestão Profissional"
   }
 ];
 
@@ -203,11 +203,11 @@ const Hero = ({ onCtaClick, onPortfolioClick }: { onCtaClick: () => void, onPort
         <h1 className="text-5xl md:text-7xl lg:text-8xl font-extrabold text-white tracking-tight mb-8 leading-tight">
           Seu Site Profissional <br/>
           <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-400 via-cyan-400 to-purple-400 text-glow">
-             Pronto para Vender
+             no topo do Google
           </span>
         </h1>
         <p className="mt-6 max-w-2xl mx-auto text-xl text-slate-400 mb-12 leading-relaxed">
-          Pare de perder clientes por não ter um site profissional e não estar bem posicionado do Google. Entregamos seu projeto em <strong className="text-white">tempo recorde</strong> com Design Premium, Otimização para Google (SEO) e Suporte Contínuo.
+          Se você não tem experiência, não faça seu site por conta própria, usando modelos prontos!  <strong className="text-white">Não perca mais clientes!</strong> Tenha seu site feito por profissionais e em tempo recorde.
         </p>
         <div className="flex flex-col sm:flex-row justify-center gap-5">
           <button 
@@ -226,7 +226,7 @@ const Hero = ({ onCtaClick, onPortfolioClick }: { onCtaClick: () => void, onPort
         </div>
         <div className="mt-12 flex items-center justify-center gap-6 text-sm text-slate-500">
            <span className="flex items-center gap-2"><CheckCircle size={14} className="text-green-500"/> Garantia de Entrega</span>
-           <span className="flex items-center gap-2"><CheckCircle size={14} className="text-green-500"/> Suporte Ilimitado</span>
+           <span className="flex items-center gap-2"><CheckCircle size={14} className="text-green-500"/> Suporte Humano</span>
            <span className="flex items-center gap-2"><CheckCircle size={14} className="text-green-500"/> Tecnologia de Ponta</span>
         </div>
       </div>
@@ -614,8 +614,8 @@ const LandingPage = ({ onPlanSelect, onLoginClick }: { onPlanSelect: (plan: any)
           />
           <FeatureCard 
             icon={Headphones} 
-            title="Suporte Técnico VIP" 
-            desc="Esqueça a dor de cabeça com hospedagem. Nós cuidamos da segurança, atualizações e backups para você." 
+            title="Suporte Técnico Humano" 
+            desc="Esqueça a dor de cabeça com hospedagem, domínios, etc. Nós cuidamos de tudo pra você." 
           />
            <FeatureCard 
             icon={Palette} 
@@ -636,7 +636,7 @@ const LandingPage = ({ onPlanSelect, onLoginClick }: { onPlanSelect: (plan: any)
          <Timeline />
       </Section>
 
-      <Section id="planos" title="Planos Transparentes" subtitle="Tudo o que você precisa em um único pagamento. Sem mensalidades abusivas." bg="dark">
+      <Section id="planos" title="Planos Transparentes" subtitle="Com um único pagamento você já terá o site dos seus sonhos." bg="dark">
         <div className="grid md:grid-cols-2 xl:grid-cols-4 gap-8">
           {PLANS.map((plan) => (
             <div key={plan.id} className={`relative bg-slate-900 rounded-3xl flex flex-col border transition-all duration-300 hover:shadow-2xl hover:-translate-y-2 ${plan.recommended ? 'border-brand-500 shadow-brand-500/20 scale-105 z-10' : 'border-slate-800 hover:border-slate-700'}`}>
