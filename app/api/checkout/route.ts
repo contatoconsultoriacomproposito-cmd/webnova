@@ -110,7 +110,7 @@ export async function POST(request: Request) {
             excluded_payment_methods: [],
             installments: 12
         },
-        statement_descriptor: 'WEBNOVA SAAS',
+        statement_descriptor: '321site',
         
         back_urls: {
           success: `${baseUrl}/?status=success`,
