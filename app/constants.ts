@@ -32,7 +32,7 @@ export const OFFER_HOSTING_YEARS = 1;
 export const OFFER_DOMAIN_YEARS = 1;
 export const OFFER_SUPPORT_CALLS = 3;
 export const OFFER_ADS_CAMPAIGNS = 5;
-export const ADS_OFFER_PRICE = 0.33;
+export const ADS_OFFER_PRICE = 750;
 
 // O preço do Suporte VIP é calculado dinamicamente: Valor do Plano * 0.75
 export const VIP_SUPPORT_MULTIPLIER = 0.75;
